@@ -1,6 +1,4 @@
 #pragma once
-#ifndef __OGLVIEWER__
-#define __OGLVIEWER__
 
 #include "GL/glew.h"
 #include "common.h"
@@ -22,15 +20,6 @@
 //#include "Math/Matrix4D.h"
 #include "Camera/perspCamera.h"
 #include "SubdMesh.h"
-
-//static int model_mat_loc;// Uniform matrix location
-static GLfloat model_mat[16];// Uniform matrix buffer
-//static int view_mat_loc;// Uniform matrix location
-static GLfloat view_mat[16];
-//static int proj_mat_loc;// Porjection matrix location
-static GLfloat proj_mat[16];
-
-const double eps = 5e-4;
 
 
 // OpenGL Window in Qt
@@ -62,17 +51,12 @@ protected:
 	void mouseMoveEvent(QMouseEvent *e) Q_DECL_OVERRIDE;
 private:
 	void bindMesh();
+	void bindPatch();
 	void saveFrameBuffer();
-public:
-	double process_fps;
 protected:
 	unique_ptr<perspCamera> view_cam;
-	Matrix4x4 proj, view;
+	GLfloat proj_mat[16], view_mat[16];
 private:
-	int fps;
-	int tcount;
-
-	QTime process_time;
 	int m_lastMousePos[2];
 	int m_selectMode;
 private: // OpenGL variables
@@ -81,6 +65,7 @@ private: // OpenGL variables
 	SubdMesh model_mesh;
 	vector<GLfloat> model_verts;// vertices vbo
 	vector<GLuint> model_idx;// Normal coordinates vbo
+	BufferTrait patchTrats;
 	GLuint model_vert_vbo, model_ibo, model_vao;
 
 	vector<GLfloat> filmgate, resgate;
@@ -89,5 +74,3 @@ private: // OpenGL variables
 
 	friend class MainWindow;
 };
-
-#endif // __OGLVIEWER__

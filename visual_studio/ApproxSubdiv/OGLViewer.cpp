@@ -2,7 +2,7 @@
 #include <QMatrix4x4>
 
 OGLViewer::OGLViewer(QWidget *parent)
-	: QOpenGLWidget(parent), tcount(0), fps(30)
+	: QOpenGLWidget(parent)
 	, m_selectMode(OBJECT_SELECT)
 	, view_cam(new perspCamera(
 		Point3f(10, 6, 10), Point3f(0, 0, 0), Vector3f(0, 1, 0),
@@ -86,6 +86,31 @@ void OGLViewer::bindMesh()
 	glVertexArrayElementBuffer(model_vao, model_ibo);
 }
 
+void OGLViewer::bindPatch()
+{
+	glDeleteBuffers(1, &model_vert_vbo);
+	glDeleteBuffers(1, &model_ibo);
+	glDeleteVertexArrays(1, &model_vao);
+
+	glCreateBuffers(1, &model_vert_vbo);
+	glNamedBufferData(model_vert_vbo, patchTrats.size, patchTrats.data, GL_STATIC_DRAW);
+
+	// IBO
+	/*glCreateBuffers(1, &model_ibo);
+	glNamedBufferData(model_ibo, sizeof(GLuint) * model_idx.size(), &model_idx[0], GL_STATIC_DRAW);*/
+
+	// VAO
+	glCreateVertexArrays(1, &model_vao);
+	glEnableVertexArrayAttrib(model_vao, 0);
+
+	// Setup the formats
+	glVertexArrayAttribFormat(model_vao, 0, 3, GL_FLOAT, GL_FALSE, 0);
+	glVertexArrayVertexBuffer(model_vao, 0, model_vert_vbo, patchTrats.offset, patchTrats.stride);
+	glVertexArrayAttribBinding(model_vao, 0, 0);
+
+	//glVertexArrayElementBuffer(model_vao, model_ibo);
+}
+
 void OGLViewer::paintGL()
 {
 	// Make curent window
@@ -113,6 +138,11 @@ void OGLViewer::paintGL()
 	glUniformMatrix4fv((*model_shader)["proj_matrix"], 1, GL_FALSE, proj_mat);
 	glDrawElements(GL_LINES_ADJACENCY, model_idx.size(), GL_UNSIGNED_INT, 0);
 	glBindVertexArray(0);
+
+
+//////////////////////////////////////////////////////////////////////////
+	glPatchParameteri(GL_PATCH_VERTICES, 16);
+	glDrawArrays(GL_PATCHES, hmsh_vtx_offset[i], patchSize);
 }
 
 // Resize function

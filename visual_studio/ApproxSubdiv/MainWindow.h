@@ -1,6 +1,4 @@
 #pragma once
-#ifndef QTOGL_WINDOW_H
-#define QTOGL_WINDOW_H
 
 #include "OGLViewer.h"
 #include <QMainWindow>
@@ -32,5 +30,3 @@ private:
 	QDialog *about;
 	Ui::MainWindowClass ui;
 };
-
-#endif // QTOGL_WINDOW_H

@@ -1,6 +1,4 @@
 #pragma once
-#ifndef COMMON_H
-#define COMMON_H
 
 #include <cstdlib>
 #include <cmath>
@@ -24,5 +22,3 @@
 #include <memory>
 #include <limits>
 using namespace std;
-
-#endif // COMMON_H
