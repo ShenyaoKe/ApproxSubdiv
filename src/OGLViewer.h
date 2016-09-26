@@ -71,6 +71,4 @@ private: // OpenGL variables
 	vector<GLfloat> filmgate, resgate;
 
 	unique_ptr<GLSLProgram> model_shader;// OpenGL shader program
-
-	friend class MainWindow;
 };
