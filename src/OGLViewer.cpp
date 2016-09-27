@@ -1,9 +1,8 @@
 #include "OGLViewer.h"
-#include <QMatrix4x4>
+#if 0
 
 OGLViewer::OGLViewer(QWidget *parent)
-	: QOpenGLWidget(parent)
-	, m_selectMode(OBJECT_SELECT)
+	: m_selectMode(OBJECT_SELECT)
 	, view_cam(new perspCamera(
 		Point3f(10, 6, 10), Point3f(0, 0, 0), Vector3f(0, 1, 0),
 		width() / static_cast<Float>(height())))
@@ -282,3 +281,4 @@ void OGLViewer::saveFrameBuffer()
 		this, "Save Screenshot file...", "default", tr("PNG(*.png)"));
 	this->grab().save(filename);
 }
+#endif

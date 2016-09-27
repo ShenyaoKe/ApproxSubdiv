@@ -71,10 +71,10 @@ void SubdMesh::initPatch()
 		size_t subId = i * sPatchSize;
 		if (fid.size == 4)
 		{
-			patch[subId     ] = verts[fid.v[0]];
-			patch[subId +  3] = verts[fid.v[1]];
-			patch[subId + 12] = verts[fid.v[3]];
-			patch[subId + 15] = verts[fid.v[2]];
+			patch[subId     ] = verts[fid.v[0] - 1];
+			patch[subId +  3] = verts[fid.v[1] - 1];
+			patch[subId + 12] = verts[fid.v[3] - 1];
+			patch[subId + 15] = verts[fid.v[2] - 1];
 
 			patch[subId +  1] = lerp(patch[subId], patch[subId + 3], 0.333f);
 			patch[subId +  2] = lerp(patch[subId], patch[subId + 3], 0.667f);

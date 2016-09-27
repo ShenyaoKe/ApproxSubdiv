@@ -2,14 +2,6 @@
 
 #include "GL/glew.h"
 #include "common.h"
-
-#include <QOpenGLWidget>
-#include <QKeyEvent>
-#include <QTimer>
-#include <QTime>
-#include <QString>
-#include <QFileDialog>
-#include <QOpenGLVertexArrayObject>
 //#include <QGLFunctions>
 
 #include "OpenGL_Utils/GLSLProgram.h"
@@ -21,23 +13,15 @@
 #include "Camera/perspCamera.h"
 #include "SubdMesh.h"
 
-
+#if 0
 // OpenGL Window in Qt
-class OGLViewer : public QOpenGLWidget
+class OGLViewer
 {
-	Q_OBJECT
 public:
-	enum Select_Mode
-	{
-		OBJECT_SELECT,
-		COMPONENT_SELECT,
-		FACE_COMPONENT_SELECT
-	};
 	OGLViewer(QWidget *parent = nullptr);
 	~OGLViewer();
 
 	//void update();
-	public slots:
 	void resetCamera();
 	void initParas();
 protected:
@@ -72,3 +56,4 @@ private: // OpenGL variables
 
 	unique_ptr<GLSLProgram> model_shader;// OpenGL shader program
 };
+#endif

@@ -1,163 +1,160 @@
-//========================================================================
-// Simple GLFW example
-// Copyright (c) Camilla Berglund <elmindreda@glfw.org>
-//
-// This software is provided 'as-is', without any express or implied
-// warranty. In no event will the authors be held liable for any damages
-// arising from the use of this software.
-//
-// Permission is granted to anyone to use this software for any purpose,
-// including commercial applications, and to alter it and redistribute it
-// freely, subject to the following restrictions:
-//
-// 1. The origin of this software must not be misrepresented; you must not
-//    claim that you wrote the original software. If you use this software
-//    in a product, an acknowledgment in the product documentation would
-//    be appreciated but is not required.
-//
-// 2. Altered source versions must be plainly marked as such, and must not
-//    be misrepresented as being the original software.
-//
-// 3. This notice may not be removed or altered from any source
-//    distribution.
-//
-//========================================================================
-//! [code]
+#include <GL/glew.h> /* include GLEW and new version of GL on Windows */
+#include <GL/glfw3.h> /* GLFW helper library */
+#include "GLSLProgram.h"
+#include "OGLViewer.h"
+#include "SubdMesh.h"
 
-#include <glad/glad.h>
-#include <GLFW/glfw3.h>
+static uint32_t win_width = 640;
+static uint32_t win_height = 480;
 
-#include "linmath.h"
+unique_ptr<perspCamera> view_cam = make_unique<perspCamera>(
+	Point3f(10, 6, 10), Point3f(0, 0, 0), Vector3f(0, 1, 0),
+	win_width / static_cast<Float>(win_height));
 
-#include <stdlib.h>
-#include <stdio.h>
+SubdMesh model_mesh("scene/obj/torus_low.obj");
+vector<GLfloat> model_verts;// vertices vbo
+vector<GLuint> model_idx;// Normal coordinates vbo
+BufferTrait patchTrats;
+GLuint model_vert_vbo, model_ibo, model_vao;
+unique_ptr<GLSLProgram> model_shader;
 
-static const struct
+const GLubyte* renderer;
+const GLubyte* version;
+
+bool draw_wireframe = true;
+
+void bindMesh()
 {
-	float x, y;
-	float r, g, b;
-} vertices[3] =
-{
-	{ -0.6f, -0.4f, 1.f, 0.f, 0.f },
-	{ 0.6f, -0.4f, 0.f, 1.f, 0.f },
-	{ 0.f,  0.6f, 0.f, 0.f, 1.f }
-};
+	glDeleteBuffers(1, &model_vert_vbo);
+	glDeleteBuffers(1, &model_ibo);
+	glDeleteVertexArrays(1, &model_vao);
 
-static const char* vertex_shader_text =
-"uniform mat4 MVP;\n"
-"attribute vec3 vCol;\n"
-"attribute vec2 vPos;\n"
-"varying vec3 color;\n"
-"void main()\n"
-"{\n"
-"    gl_Position = MVP * vec4(vPos, 0.0, 1.0);\n"
-"    color = vCol;\n"
-"}\n";
+	glCreateBuffers(1, &model_vert_vbo);
+	glNamedBufferData(model_vert_vbo, sizeof(GLfloat) * model_verts.size(), &model_verts[0], GL_STATIC_DRAW);
 
-static const char* fragment_shader_text =
-"varying vec3 color;\n"
-"void main()\n"
-"{\n"
-"    gl_FragColor = vec4(color, 1.0);\n"
-"}\n";
+	// IBO
+	glCreateBuffers(1, &model_ibo);
+	glNamedBufferData(model_ibo, sizeof(GLuint) * model_idx.size(), &model_idx[0], GL_STATIC_DRAW);
 
-static void error_callback(int error, const char* description)
-{
-	fprintf(stderr, "Error: %s\n", description);
+	// VAO
+	glCreateVertexArrays(1, &model_vao);
+	glEnableVertexArrayAttrib(model_vao, 0);
+
+	// Setup the formats
+	glVertexArrayAttribFormat(model_vao, 0, 3, GL_FLOAT, GL_FALSE, 0);
+	glVertexArrayVertexBuffer(model_vao, 0, model_vert_vbo, 0, sizeof(GLfloat) * 3);
+	glVertexArrayAttribBinding(model_vao, 0, 0);
+
+	glVertexArrayElementBuffer(model_vao, model_ibo);
 }
 
-static void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
+void initGL()
 {
-	if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
-		glfwSetWindowShouldClose(window, GLFW_TRUE);
+	renderer = glGetString(GL_RENDERER); /* get renderer string */
+	version = glGetString(GL_VERSION); /* version as a string */
+	printf("Renderer: %s\n", renderer);
+	printf("OpenGL version supported %s\n", version);
+
+	glewExperimental = GL_TRUE;
+	glewInit();
+
+	/* geometry to use. these are 3 xyz points (9 floats total) to make a triangle */
+	model_shader = make_unique<GLSLProgram>(
+		"shaders/quad_vs.glsl", "shaders/quad_fs.glsl", "shaders/quad_gs.glsl");
+
+	model_mesh.exportIndexedVBO(&model_verts, nullptr, nullptr, &model_idx);
+	bindMesh();
+
+	glEnable(GL_DEPTH_TEST);
+	glDepthFunc(GL_LESS);
 }
 
-int main(void)
+void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
-	GLFWwindow* window;
-	GLuint vertex_buffer, vertex_shader, fragment_shader, program;
-	GLint mvp_location, vpos_location, vcol_location;
-
-	glfwSetErrorCallback(error_callback);
-
-	if (!glfwInit())
-		exit(EXIT_FAILURE);
-
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 2);
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
-
-	window = glfwCreateWindow(640, 480, "Simple example", NULL, NULL);
-	if (!window)
+	if (key == GLFW_KEY_F && action == GLFW_PRESS)
 	{
-		glfwTerminate();
-		exit(EXIT_FAILURE);
+		view_cam.reset(new perspCamera(
+			Point3f(10, 6, 10), Point3f(0, 0, 0), Vector3f(0, 1, 0),
+			win_width / static_cast<Float>(win_height)));
+	}
+}
+
+void window_resize_callback(GLFWwindow* window, int width, int height)
+{
+	win_width = width;
+	win_height = height;
+	view_cam->resizeViewport(win_width / static_cast<Float>(win_height));
+	glViewport(0, 0, win_width, win_height);
+}
+
+void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
+{
+	if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS)
+	{
+		// Do sth
+	}
+}
+
+int main()
+{
+	GLFWwindow* window = nullptr;
+
+	/* start GL context and O/S window using the GLFW helper library */
+	if (!glfwInit()) {
+		fprintf(stderr, "ERROR: could not start GLFW3\n");
+		return 1;
 	}
 
-	glfwSetKeyCallback(window, key_callback);
-
+	window = glfwCreateWindow(win_width, win_height, "ApproxSubdiv", nullptr, nullptr);
+	if (!window) {
+		fprintf(stderr, "ERROR: could not open window with GLFW3\n");
+		glfwTerminate();
+		return 1;
+	}
 	glfwMakeContextCurrent(window);
-	gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
-	glfwSwapInterval(1);
+	/* start GLEW extension handler */
+	initGL();
 
-	// NOTE: OpenGL error checks have been omitted for brevity
+	glfwSetKeyCallback(window, key_callback);
+	glfwSetWindowSizeCallback(window, window_resize_callback);
+	glfwSetMouseButtonCallback(window, mouse_button_callback);
 
-	glGenBuffers(1, &vertex_buffer);
-	glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+	/* tell GL to only draw onto a pixel if the shape is closer to the viewer
+	than anything already drawn at that pixel */
+	
 
-	vertex_shader = glCreateShader(GL_VERTEX_SHADER);
-	glShaderSource(vertex_shader, 1, &vertex_shader_text, NULL);
-	glCompileShader(vertex_shader);
-
-	fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
-	glShaderSource(fragment_shader, 1, &fragment_shader_text, NULL);
-	glCompileShader(fragment_shader);
-
-	program = glCreateProgram();
-	glAttachShader(program, vertex_shader);
-	glAttachShader(program, fragment_shader);
-	glLinkProgram(program);
-
-	mvp_location = glGetUniformLocation(program, "MVP");
-	vpos_location = glGetAttribLocation(program, "vPos");
-	vcol_location = glGetAttribLocation(program, "vCol");
-
-	glEnableVertexAttribArray(vpos_location);
-	glVertexAttribPointer(vpos_location, 2, GL_FLOAT, GL_FALSE,
-		sizeof(vertices[0]), (void*)0);
-	glEnableVertexAttribArray(vcol_location);
-	glVertexAttribPointer(vcol_location, 3, GL_FLOAT, GL_FALSE,
-		sizeof(vertices[0]), (void*)(sizeof(float) * 2));
+	// Setup buffers
 
 	while (!glfwWindowShouldClose(window))
 	{
-		float ratio;
-		int width, height;
-		mat4x4 m, p, mvp;
+		/* wipe the drawing surface clear */
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		glClearColor(0.6, 0.6, 0.6, 1.0);
 
-		glfwGetFramebufferSize(window, &width, &height);
-		ratio = width / (float)height;
+		if (draw_wireframe)
+		{
+			glDisable(GL_CULL_FACE);
+			glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+		}
+		else
+		{
+			glEnable(GL_CULL_FACE);
+			glCullFace(GL_BACK); // cull back face
+			glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+		}
 
-		glViewport(0, 0, width, height);
-		glClear(GL_COLOR_BUFFER_BIT);
+		glBindVertexArray(model_vao);
+		model_shader->use_program();
+		// Draw something
+		glUniformMatrix4fv((*model_shader)["view_matrix"], 1, GL_FALSE, view_cam->world_to_cam());
+		glUniformMatrix4fv((*model_shader)["proj_matrix"], 1, GL_FALSE, view_cam->cam_to_screen());
+		glDrawElements(GL_LINES_ADJACENCY, model_idx.size(), GL_UNSIGNED_INT, 0);
 
-		mat4x4_identity(m);
-		mat4x4_rotate_Z(m, m, (float)glfwGetTime());
-		mat4x4_ortho(p, -ratio, ratio, -1.f, 1.f, 1.f, -1.f);
-		mat4x4_mul(mvp, p, m);
-
-		glUseProgram(program);
-		glUniformMatrix4fv(mvp_location, 1, GL_FALSE, (const GLfloat*)mvp);
-		glDrawArrays(GL_TRIANGLES, 0, 3);
-
-		glfwSwapBuffers(window);
 		glfwPollEvents();
+		glfwSwapBuffers(window);
 	}
 
-	glfwDestroyWindow(window);
-
+	/* close GL context and any other GLFW resources */
 	glfwTerminate();
-	exit(EXIT_SUCCESS);
+	return 0;
 }
-
-//! [code]
