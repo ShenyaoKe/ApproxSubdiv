@@ -48,6 +48,30 @@ void bindMesh()
 	glVertexArrayElementBuffer(model_vao, model_ibo);
 }
 
+
+void bindPatch()
+{
+	glDeleteBuffers(1, &model_vert_vbo);
+	glDeleteBuffers(1, &model_ibo);
+	glDeleteVertexArrays(1, &model_vao);
+
+	glCreateBuffers(1, &model_vert_vbo);
+	glNamedBufferData(model_vert_vbo, patchTrats.size, patchTrats.data, GL_STATIC_DRAW);
+
+	// IBO
+	/*glCreateBuffers(1, &model_ibo);
+	glNamedBufferData(model_ibo, sizeof(GLuint) * model_idx.size(), &model_idx[0], GL_STATIC_DRAW);*/
+
+	// VAO
+	glCreateVertexArrays(1, &model_vao);
+	glEnableVertexArrayAttrib(model_vao, 0);
+
+	// Setup the formats
+	glVertexArrayAttribFormat(model_vao, 0, 3, GL_FLOAT, GL_FALSE, 0);
+	glVertexArrayVertexBuffer(model_vao, 0, model_vert_vbo, patchTrats.offset, patchTrats.stride);
+	glVertexArrayAttribBinding(model_vao, 0, 0);
+}
+
 void initGL()
 {
 	renderer = glGetString(GL_RENDERER); /* get renderer string */
