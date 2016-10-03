@@ -86,6 +86,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="..\src\common.h" />
+    <ClInclude Include="..\src\main.h" />
     <ClInclude Include="..\src\OGLViewer.h" />
     <ClInclude Include="..\src\SubdMesh.h" />
   </ItemGroup>
