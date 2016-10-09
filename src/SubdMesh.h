@@ -1,13 +1,20 @@
 #pragma once
 #include "common.h"
 #include "Geometry/TriangleMesh.h"
+#include "halfedge.h"
 
 struct BufferTrait
 {
-	const void* data;
-	int32_t size;
-	int32_t offset;
-	int32_t stride;
+	const void* data = nullptr;
+	uint32_t count = 0;
+	uint32_t size = 0;
+	uint32_t offset = 0;
+	uint32_t stride = 0;
+};
+
+struct BezierPatch
+{
+	Point3f patch[16];
 };
 
 class SubdMesh
@@ -23,6 +30,7 @@ public:
 		vector<unsigned int>* idx_array = nullptr) const;
 
 	void getPatch(BufferTrait &trait) const;
+	void savePatch() const;
 private:
 	void initPatch();
 
@@ -33,6 +41,7 @@ private:
 	vector<Normal3f> norms;
 	vector<PolyIndex> fids;
 
-	vector<Point3f> patch;
+	unique_ptr<HDS_Mesh> mHDSMesh;
+	vector<Point3f> patch4;
 };
 

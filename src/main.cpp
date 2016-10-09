@@ -43,24 +43,30 @@ int main()
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		glClearColor(0.6, 0.6, 0.6, 1.0);
 
-		if (draw_wireframe)
+		if (!draw_wireframe)
 		{
-			glDisable(GL_CULL_FACE);
-			glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-		}
-		else
-		{
-			glEnable(GL_CULL_FACE);
-			glCullFace(GL_BACK); // cull back face
+			//glEnable(GL_CULL_FACE);
+			//glCullFace(GL_BACK); // cull back face
 			glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 		}
+		glBindVertexArray(patch_vao);
+		patch_shader->use_program();
+		// Draw something
+		glUniformMatrix4fv((*patch_shader)["view_matrix"], 1, GL_FALSE, view_cam->world_to_cam());
+		glUniformMatrix4fv((*patch_shader)["proj_matrix"], 1, GL_FALSE, view_cam->cam_to_screen());
+		glUniform1f((*patch_shader)["segments"], tess_seg);
+		glPatchParameteri(GL_PATCH_VERTICES, 16);
+		glDrawArrays(GL_PATCHES, 0, patchTrats.count);
 
+		//glDisable(GL_CULL_FACE);
+		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 		glBindVertexArray(model_vao);
 		model_shader->use_program();
 		// Draw something
 		glUniformMatrix4fv((*model_shader)["view_matrix"], 1, GL_FALSE, view_cam->world_to_cam());
 		glUniformMatrix4fv((*model_shader)["proj_matrix"], 1, GL_FALSE, view_cam->cam_to_screen());
 		glDrawElements(GL_LINES_ADJACENCY, model_idx.size(), GL_UNSIGNED_INT, 0);
+
 
 		glfwPollEvents();
 		glfwSwapBuffers(window);

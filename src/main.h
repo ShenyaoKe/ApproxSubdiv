@@ -9,6 +9,7 @@
 static uint32_t win_width = 640;
 static uint32_t win_height = 480;
 static double cursor_last_x, cursor_last_y;
+static GLfloat tess_seg = 4;
 
 unique_ptr<perspCamera> view_cam = make_unique<perspCamera>(
 	Point3f(10, 6, 10), Point3f(0, 0, 0), Vector3f(0, 1, 0),
@@ -21,11 +22,12 @@ BufferTrait patchTrats;
 GLuint model_vert_vbo, model_ibo, model_vao;
 GLuint patch_vert_vbo, patch_vao;
 unique_ptr<GLSLProgram> model_shader;
+unique_ptr<GLSLProgram> patch_shader;
 
 const GLubyte* renderer;
 const GLubyte* version;
 
-bool draw_wireframe = true;
+bool draw_wireframe = false;
 bool move_camera = false;
 bool zoom_camera = false;
 
@@ -61,11 +63,12 @@ void bindPatch()
 	glDeleteVertexArrays(1, &patch_vao);
 
 	glCreateBuffers(1, &patch_vert_vbo);
-	glNamedBufferData(patch_vert_vbo, patchTrats.size, patchTrats.data, GL_STATIC_DRAW);
-
-	// IBO
-	/*glCreateBuffers(1, &model_ibo);
-	glNamedBufferData(model_ibo, sizeof(GLuint) * model_idx.size(), &model_idx[0], GL_STATIC_DRAW);*/
+	glNamedBufferData(
+		patch_vert_vbo,
+		patchTrats.size,
+		patchTrats.data,
+		GL_STATIC_DRAW
+	);
 
 	// VAO
 	glCreateVertexArrays(1, &patch_vao);
@@ -73,7 +76,13 @@ void bindPatch()
 
 	// Setup the formats
 	glVertexArrayAttribFormat(patch_vao, 0, 3, GL_FLOAT, GL_FALSE, 0);
-	glVertexArrayVertexBuffer(patch_vao, 0, model_vert_vbo, patchTrats.offset, patchTrats.stride);
+	glVertexArrayVertexBuffer(
+		patch_vao,
+		0,
+		patch_vert_vbo,
+		patchTrats.offset,
+		patchTrats.stride
+	);
 	glVertexArrayAttribBinding(patch_vao, 0, 0);
 }
 
@@ -90,6 +99,12 @@ void initGL()
 	/* geometry to use. these are 3 xyz points (9 floats total) to make a triangle */
 	model_shader = make_unique<GLSLProgram>(
 		"shaders/quad_vs.glsl", "shaders/quad_fs.glsl", "shaders/quad_gs.glsl");
+	patch_shader = make_unique<GLSLProgram>(
+		"shaders/patch_vs.glsl",
+		"shaders/patch_fs.glsl",
+		nullptr,
+		"shaders/patch_tc.glsl",
+		"shaders/patch_te.glsl");
 
 	model_mesh.exportIndexedVBO(&model_verts, nullptr, nullptr, &model_idx);
 	bindMesh();
@@ -97,7 +112,7 @@ void initGL()
 	bindPatch();
 
 	glEnable(GL_DEPTH_TEST);
-	glDepthFunc(GL_LESS);
+	glDepthFunc(GL_LEQUAL);
 }
 
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
@@ -107,6 +122,22 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 		view_cam.reset(new perspCamera(
 			Point3f(10, 6, 10), Point3f(0, 0, 0), Vector3f(0, 1, 0),
 			win_width / static_cast<Float>(win_height)));
+	}
+	if (key == GLFW_KEY_W && action == GLFW_PRESS)
+	{
+		draw_wireframe = !draw_wireframe;
+	}
+	if (key == GLFW_KEY_KP_ADD)
+	{
+		tess_seg += 1.0f;
+	}
+	if (key == GLFW_KEY_KP_SUBTRACT)
+	{
+		tess_seg -= 1.0f;
+		if (tess_seg < 1.0f)
+		{
+			tess_seg = 1.0f;
+		}
 	}
 }
 

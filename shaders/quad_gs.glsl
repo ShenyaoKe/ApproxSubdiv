@@ -1,7 +1,7 @@
 #version 430
 
 layout(lines_adjacency) in;
-layout(triangle_strip, max_vertices = 4) out;
+layout(line_strip, max_vertices = 4) out;
 
 //out vec3 norm;
 //out vec2 TexCoord;
@@ -39,13 +39,13 @@ void main()
 	//cosTheta = dot(normalize(lpos_world - pos_eye), norm_eye);
 	EmitVertex();
 
-	gl_Position = p3;
-	pos_eye = (view_matrix * gl_in[3].gl_Position).xyz;
+	gl_Position = p2;
+	pos_eye = (view_matrix * gl_in[2].gl_Position).xyz;
 	//cosTheta = dot(normalize(lpos_world - pos_eye), norm_eye);
 	EmitVertex();
 
-	gl_Position = p2;
-	pos_eye = (view_matrix * gl_in[2].gl_Position).xyz;
+	gl_Position = p3;
+	pos_eye = (view_matrix * gl_in[3].gl_Position).xyz;
 	//cosTheta = dot(normalize(lpos_world - pos_eye), norm_eye);
 	EmitVertex();
 }

@@ -1,73 +1,101 @@
-#version 440
-layout(isolines) in;
+#version 450
+layout(quads) in;
 
-uniform mat4 view_matrix, proj_matrix;
+uniform mat4 proj_matrix;
 
-uniform int nLayer;
-patch in int vertCount;
-patch in int gridSample;
-out vec3 uvw;
+out vec3 pos_eye, norm_eye;
 
-vec4 p[4];// Control points
-
-vec4 posAtLayer(int layer, float s, float t)
+vec3 bezier(int id0, int id1, int id2, int id3, float t)
 {
-	int idx = layer * 4;
+	vec3 p[3];// Control points
 
-	return mix(
-		mix(gl_in[idx].gl_Position, gl_in[idx + 1].gl_Position, s),
-		mix(gl_in[idx + 3].gl_Position, gl_in[idx + 2].gl_Position, s),
-		t);
+	p[0] = mix(gl_in[id0].gl_Position, gl_in[id1].gl_Position, t).xyz;
+	p[1] = mix(gl_in[id1].gl_Position, gl_in[id2].gl_Position, t).xyz;
+	p[2] = mix(gl_in[id2].gl_Position, gl_in[id3].gl_Position, t).xyz;
+	
+	p[0] = mix(p[0], p[1], t);
+	p[1] = mix(p[1], p[2], t);
+	
+	return mix(p[0], p[1], t);
 }
-float rand(vec2 co)
+vec3 bilidear_ori(int id0, int id1, int id2, int id3, float s, float t)
 {
-	return (fract(sin(dot(co.xy, vec2(12.9898, 78.233))) * 43758.5453) + 1) * 0.5;
+	// id3 -- id2
+	//  |      |
+	// id0 -- id1
+	return mix( mix(gl_in[id0].gl_Position, gl_in[id1].gl_Position, s),
+				mix(gl_in[id3].gl_Position, gl_in[id2].gl_Position, s),
+				t).xyz;
 }
-vec4 blossomCatmullRom(float t)
-{
-	// Catmull-Rom Spline
-	t = t + 1; // 1: degree - 1 = 2 - 1
 
-	// Lagrange
-	// Degree: 2
-	for (int j = 0; j < 2; j++)
-	{
-		for (int i = 0; i < 3 - j; i++)
-		{
-			p[i] = p[i] * (i + j + 1 - t) / float(j + 1)
-				+ p[i + 1] * (t - i) / float(j + 1);
-		}
-	}
-	//de Boor
-	return p[0] * (2 - t) + p[1] * (t - 1);
+
+
+vec3 bilidear(vec3 p0, vec3 p1, vec3 p2, vec3 p3, float s, float t)
+{
+	// id3 -- id2
+	//  |      |
+	// id0 -- id1
+	return mix(mix(p0, p1, s), mix(p3, p2, s), t);
 }
+
 void main()
 {
-
 	float u = gl_TessCoord.x;// (n_layer - 1) * t;
 	float v = gl_TessCoord.y;
 	// Sample on grid
-	int gridSampleSq = gridSample * gridSample;
-	int planar_index = int(v * gridSampleSq);
-	float si = float(planar_index % gridSample) + rand(vec2(v, v));
-	float ti = float(planar_index / gridSample) + rand(vec2(v, v));
-	float s = si / float(gridSample);
-	float t = ti / float(gridSample);
-
-	uvw = vec3(s, t, u);
-
-	// Catmull-Rom Blossom
-	float cvT = u * float(nLayer - 1);
-	int iLayer = int(cvT);
-	int jLayer = iLayer + 1;
-	int prevLayer = iLayer - 1;
-	int nextLayer = jLayer + 1;
-	p[1] = posAtLayer(iLayer, s, t);
-	p[2] = posAtLayer(jLayer, s, t);
-	p[0] = prevLayer < 0 ? p[1] : posAtLayer(prevLayer, s, t);
-	p[3] = nextLayer >= nLayer ? p[2] : posAtLayer(nextLayer, s, t);
+#if 0
+	vec3 p[4];
+	p[0] = bezier(0, 1, 2, 3, u);
+	p[1] = bezier(4, 5, 6, 7, u);
+	p[2] = bezier(8, 9, 10, 11, u);
+	p[3] = bezier(12, 13, 14, 15, u);
 	
-	cvT -= iLayer;
+	p[0] = mix(p[0], p[1], v);
+	p[1] = mix(p[1], p[2], v);
+	p[2] = mix(p[2], p[3], v);
 	
-	gl_Position = proj_matrix * view_matrix * blossomCatmullRom(cvT);
+	
+	p[0] = mix(p[0], p[1], v);
+	p[1] = mix(p[1], p[2], v);
+	pos_eye = mix(p[0], p[1], v);
+
+	vec3 dpdv = p[1] - p[0];
+	vec3 dpdu = (gl_in[1].gl_Position - gl_in[0].gl_Position).xyz;
+#else
+	vec3 p[9];
+	// 6 -- 7 -- 8
+	// |    |    |
+	// 3 -- 4 -- 5
+	// |    |    |
+	// 0 -- 1 -- 2
+	p[0] = bilidear_ori(0, 1, 5, 4, u, v);
+	p[1] = bilidear_ori(1, 2, 6, 5, u, v);
+	p[2] = bilidear_ori(2, 3, 7, 6, u, v);
+
+	p[3] = bilidear_ori(4, 5, 9, 8, u, v);
+	p[4] = bilidear_ori(5, 6, 10, 9, u, v);
+	p[5] = bilidear_ori(6, 7, 11, 10, u, v);
+
+	p[6] = bilidear_ori(8, 9, 13, 12, u, v);
+	p[7] = bilidear_ori(9, 10, 14, 13, u, v);
+	p[8] = bilidear_ori(10, 11, 15, 14, u, v);
+	
+	// 2 -- 3
+	// |    |
+	// 0 -- 1
+	p[0] = bilidear(p[0], p[1], p[4], p[3], u, v);
+	p[1] = bilidear(p[1], p[2], p[5], p[4], u, v);
+	p[2] = bilidear(p[3], p[4], p[7], p[6], u, v);
+	p[3] = bilidear(p[4], p[5], p[8], p[7], u, v);
+
+	pos_eye = bilidear(p[0], p[1], p[3], p[2], u, v);
+	
+	vec3 dpdu = mix(p[1] - p[0], p[3] - p[2], v);
+	vec3 dpdv = mix(p[2] - p[0], p[3] - p[1], u);
+#endif
+	
+
+	norm_eye = normalize(cross(dpdu, dpdv));
+
+	gl_Position = proj_matrix * vec4(pos_eye, 1.0f);
 }

@@ -30,6 +30,9 @@
     <ClInclude Include="..\src\main.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\src\halfedge.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\src\main.cpp">
@@ -39,6 +42,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\src\SubdMesh.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\halfedge.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -56,6 +62,21 @@
       <Filter>Shaders</Filter>
     </None>
     <None Include="..\shaders\quad_vs.glsl">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="..\shaders\patch_fs.glsl">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="..\shaders\patch_gs.glsl">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="..\shaders\patch_tc.glsl">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="..\shaders\patch_te.glsl">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="..\shaders\patch_vs.glsl">
       <Filter>Shaders</Filter>
     </None>
   </ItemGroup>

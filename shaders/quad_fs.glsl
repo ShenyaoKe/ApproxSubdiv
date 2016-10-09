@@ -19,11 +19,13 @@ void main()
 	// ambient intensity
 	// diffuse intensity
 	// raise light position to eye space
-	vec3 dir_lt = normalize(light_pos - pos_eye);
+	/*vec3 dir_lt = normalize(light_pos - pos_eye);
 	float cosTheta = abs(dot(dir_lt, norm_eye));
 	vec3 Id = mix(La, Kd, cosTheta); // final diffuse intensity
+	*/
 	
 	// final colour
-	frag_color = vec4(Id, 1.0);
+	//frag_color = vec4(Id, 1.0);
+	frag_color = vec4(1.0f, 0.0f, 0.0f, 1.0);
 }
 

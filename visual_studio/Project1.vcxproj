@@ -86,16 +86,23 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="..\src\common.h" />
+    <ClInclude Include="..\src\halfedge.h" />
     <ClInclude Include="..\src\main.h" />
     <ClInclude Include="..\src\OGLViewer.h" />
     <ClInclude Include="..\src\SubdMesh.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\src\halfedge.cpp" />
     <ClCompile Include="..\src\main.cpp" />
     <ClCompile Include="..\src\OGLViewer.cpp" />
     <ClCompile Include="..\src\SubdMesh.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="..\shaders\patch_fs.glsl" />
+    <None Include="..\shaders\patch_gs.glsl" />
+    <None Include="..\shaders\patch_tc.glsl" />
+    <None Include="..\shaders\patch_te.glsl" />
+    <None Include="..\shaders\patch_vs.glsl" />
     <None Include="..\shaders\post_fs.glsl" />
     <None Include="..\shaders\post_vs.glsl" />
     <None Include="..\shaders\quad_fs.glsl" />
