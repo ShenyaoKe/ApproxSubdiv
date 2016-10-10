@@ -12,7 +12,7 @@ static double cursor_last_x, cursor_last_y;
 static GLfloat tess_seg = 4;
 
 unique_ptr<perspCamera> view_cam = make_unique<perspCamera>(
-	Point3f(10, 6, 10), Point3f(0, 0, 0), Vector3f(0, 1, 0),
+	Point3f(5, 3, 5), Point3f(0, 0, 0), Vector3f(0, 1, 0),
 	win_width / static_cast<Float>(win_height));
 
 SubdMesh model_mesh("scene/obj/torus_low.obj");
