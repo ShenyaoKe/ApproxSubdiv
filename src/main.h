@@ -15,7 +15,7 @@ unique_ptr<perspCamera> view_cam = make_unique<perspCamera>(
 	Point3f(5, 3, 5), Point3f(0, 0, 0), Vector3f(0, 1, 0),
 	win_width / static_cast<Float>(win_height));
 
-SubdMesh model_mesh("scene/obj/dragon_scaled.obj");
+SubdMesh* model_mesh;
 vector<GLfloat> model_verts;// vertices vbo
 vector<GLuint> model_idx;// Normal coordinates vbo
 BufferTrait patchTrats;
@@ -27,6 +27,8 @@ unique_ptr<GLSLProgram> patch_shader;
 const GLubyte* renderer;
 const GLubyte* version;
 
+bool view_changed = true;
+static int drawtime = 0;
 bool draw_cage = false;
 bool draw_wireframe = false;
 bool move_camera = false;
@@ -107,13 +109,51 @@ void initGL()
 		"shaders/patch_tc.glsl",
 		"shaders/patch_te.glsl");
 
-	model_mesh.exportIndexedVBO(&model_verts, nullptr, nullptr, &model_idx);
+	model_mesh->exportIndexedVBO(&model_verts, nullptr, nullptr, &model_idx);
 	bindMesh();
-	model_mesh.getPatch(patchTrats);
+	model_mesh->getPatch(patchTrats);
 	bindPatch();
 
 	glEnable(GL_DEPTH_TEST);
 	glDepthFunc(GL_LEQUAL);
+	glClearColor(0.6, 0.6, 0.6, 1.0);
+}
+
+void window_refresh_callback(GLFWwindow* window)
+{
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	if (!draw_wireframe)
+	{
+		//glEnable(GL_CULL_FACE);
+		//glCullFace(GL_BACK); // cull back face
+		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	}
+	else
+	{
+		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+	}
+	glBindVertexArray(patch_vao);
+	patch_shader->use_program();
+	// Draw something
+	glUniformMatrix4fv((*patch_shader)["view_matrix"], 1, GL_FALSE, view_cam->world_to_cam());
+	glUniformMatrix4fv((*patch_shader)["proj_matrix"], 1, GL_FALSE, view_cam->cam_to_screen());
+	glUniform1f((*patch_shader)["segments"], tess_seg);
+	glPatchParameteri(GL_PATCH_VERTICES, 16);
+	glDrawArrays(GL_PATCHES, 0, patchTrats.count);
+
+	if (draw_cage)
+	{
+		//glDisable(GL_CULL_FACE);
+		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+		glBindVertexArray(model_vao);
+		model_shader->use_program();
+		// Draw something
+		glUniformMatrix4fv((*model_shader)["view_matrix"], 1, GL_FALSE, view_cam->world_to_cam());
+		glUniformMatrix4fv((*model_shader)["proj_matrix"], 1, GL_FALSE, view_cam->cam_to_screen());
+		glDrawElements(GL_LINES_ADJACENCY, model_idx.size(), GL_UNSIGNED_INT, 0);
+	}
+
+	glfwSwapBuffers(window);
 }
 
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
@@ -132,6 +172,21 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 	{
 		draw_cage = !draw_cage;
 	}
+
+	if (key == GLFW_KEY_Z && action == GLFW_PRESS)
+	{
+		zoom_camera = !zoom_camera;
+	}
+
+	if (key == GLFW_KEY_UP && action != GLFW_PRESS)
+	{
+		view_cam->zoom(0, 0.05, 0.0);
+	}
+	if (key == GLFW_KEY_DOWN && action != GLFW_RELEASE)
+	{
+		view_cam->zoom(0, -0.05, 0.0);
+	}
+
 	if (key == GLFW_KEY_KP_ADD)
 	{
 		tess_seg += 1.0f;
@@ -144,6 +199,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 			tess_seg = 1.0f;
 		}
 	}
+	view_changed = true;
 }
 
 void window_resize_callback(GLFWwindow* window, int width, int height)
@@ -152,6 +208,8 @@ void window_resize_callback(GLFWwindow* window, int width, int height)
 	win_height = height;
 	view_cam->resizeViewport(win_width / static_cast<Float>(win_height));
 	glViewport(0, 0, win_width, win_height);
+
+	view_changed = true;
 }
 
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
@@ -170,6 +228,20 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 	{
 		move_camera = zoom_camera = false;
 	}
+
+	view_changed = true;
+}
+
+void cursor_enter_callback(GLFWwindow* window, int entered)
+{
+	if (entered)
+	{
+		glfwGetCursorPos(window, &cursor_last_x, &cursor_last_y);
+	}
+	else
+	{
+		// The cursor left the client area of the window
+	}
 }
 
 void cursor_position_callback(GLFWwindow* window, double xpos, double ypos)
@@ -180,21 +252,28 @@ void cursor_position_callback(GLFWwindow* window, double xpos, double ypos)
 	if (move_camera)
 	{
 		view_cam->rotate(dy * 0.25f, -dx * 0.25f, 0.0);
+
+		view_changed = true;
 	}
-	if (zoom_camera && dx != cursor_last_x)// zooming
+	/*if (zoom_camera && dx != cursor_last_x)// zooming
 	{
 		view_cam->zoom(0.0, 0.0, dx * 0.05);
+
+		view_changed = true;
 	}
-	/*if (!zoom_camera && dx != cursor_last_x && dy != cursor_last_y)
+	if (!zoom_camera && dx != cursor_last_x && dy != cursor_last_y)
 	{
 		view_cam->zoom(-dx * 0.05, dy * 0.05, 0.0);
 	}*/
 
 	cursor_last_x = xpos;
 	cursor_last_y = ypos;
+
 }
 
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
 {
 	view_cam->zoom(0, 0, yoffset);
+
+	view_changed = true;
 }

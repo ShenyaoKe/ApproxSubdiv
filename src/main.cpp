@@ -3,6 +3,17 @@
 
 int main()
 {
+	string filename;
+#if DEBUG
+	filename = "scene/obj/dragon_scaled.obj";
+#else
+	cout << "Input filename: ";
+	cin >> filename;
+
+#endif // _DEBUG
+	model_mesh = new SubdMesh(filename.c_str());
+
+
 	GLFWwindow* window = nullptr;
 
 	/* start GL context and O/S window using the GLFW helper library */
@@ -29,47 +40,17 @@ int main()
 
 	GLFWcursor* cursor = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);
 	if (cursor) glfwSetCursor(window, cursor);
+	glfwSetCursorEnterCallback(window, cursor_enter_callback);
 	glfwSetCursorPosCallback(window, cursor_position_callback);
 
 	while (!glfwWindowShouldClose(window))
 	{
-		/* wipe the drawing surface clear */
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		glClearColor(0.6, 0.6, 0.6, 0.0);
-
-		if (!draw_wireframe)
+		if (view_changed)
 		{
-			//glEnable(GL_CULL_FACE);
-			//glCullFace(GL_BACK); // cull back face
-			glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+			window_refresh_callback(window);
+			view_changed = false;
 		}
-		else
-		{
-			glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-		}
-		glBindVertexArray(patch_vao);
-		patch_shader->use_program();
-		// Draw something
-		glUniformMatrix4fv((*patch_shader)["view_matrix"], 1, GL_FALSE, view_cam->world_to_cam());
-		glUniformMatrix4fv((*patch_shader)["proj_matrix"], 1, GL_FALSE, view_cam->cam_to_screen());
-		glUniform1f((*patch_shader)["segments"], tess_seg);
-		glPatchParameteri(GL_PATCH_VERTICES, 16);
-		glDrawArrays(GL_PATCHES, 0, patchTrats.count);
-
-		if (draw_cage)
-		{
-			//glDisable(GL_CULL_FACE);
-			glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-			glBindVertexArray(model_vao);
-			model_shader->use_program();
-			// Draw something
-			glUniformMatrix4fv((*model_shader)["view_matrix"], 1, GL_FALSE, view_cam->world_to_cam());
-			glUniformMatrix4fv((*model_shader)["proj_matrix"], 1, GL_FALSE, view_cam->cam_to_screen());
-			glDrawElements(GL_LINES_ADJACENCY, model_idx.size(), GL_UNSIGNED_INT, 0);
-		}
-
 		glfwPollEvents();
-		glfwSwapBuffers(window);
 	}
 
 	//glfwDestroyCursor(cursor);
