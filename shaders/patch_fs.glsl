@@ -19,7 +19,7 @@ void main()
 	// diffuse intensity
 	// raise light position to eye space
 	vec3 dir_lt = normalize(light_pos - pos_eye);
-	float cosTheta = abs(dot(dir_lt, norm_eye));
+	float cosTheta = dot(dir_lt, norm_eye);
 	vec3 Id = mix(La, Kd, cosTheta); // final diffuse intensity
 	
 	// final colour

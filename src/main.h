@@ -6,8 +6,8 @@
 #include "SubdMesh.h"
 
 
-static uint32_t win_width = 640;
-static uint32_t win_height = 480;
+static int32_t win_width = 640;
+static int32_t win_height = 480;
 static double cursor_last_x, cursor_last_y;
 static GLfloat tess_seg = 4;
 
@@ -15,7 +15,7 @@ unique_ptr<perspCamera> view_cam = make_unique<perspCamera>(
 	Point3f(5, 3, 5), Point3f(0, 0, 0), Vector3f(0, 1, 0),
 	win_width / static_cast<Float>(win_height));
 
-SubdMesh model_mesh("scene/obj/torus_low.obj");
+SubdMesh model_mesh("scene/obj/dragon_scaled.obj");
 vector<GLfloat> model_verts;// vertices vbo
 vector<GLuint> model_idx;// Normal coordinates vbo
 BufferTrait patchTrats;
@@ -27,6 +27,7 @@ unique_ptr<GLSLProgram> patch_shader;
 const GLubyte* renderer;
 const GLubyte* version;
 
+bool draw_cage = false;
 bool draw_wireframe = false;
 bool move_camera = false;
 bool zoom_camera = false;
@@ -127,6 +128,10 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 	{
 		draw_wireframe = !draw_wireframe;
 	}
+	if (key == GLFW_KEY_C && action == GLFW_PRESS)
+	{
+		draw_cage = !draw_cage;
+	}
 	if (key == GLFW_KEY_KP_ADD)
 	{
 		tess_seg += 1.0f;
@@ -176,10 +181,14 @@ void cursor_position_callback(GLFWwindow* window, double xpos, double ypos)
 	{
 		view_cam->rotate(dy * 0.25f, -dx * 0.25f, 0.0);
 	}
-	else if (zoom_camera && dx != cursor_last_x)// zooming
+	if (zoom_camera && dx != cursor_last_x)// zooming
 	{
 		view_cam->zoom(0.0, 0.0, dx * 0.05);
 	}
+	/*if (!zoom_camera && dx != cursor_last_x && dy != cursor_last_y)
+	{
+		view_cam->zoom(-dx * 0.05, dy * 0.05, 0.0);
+	}*/
 
 	cursor_last_x = xpos;
 	cursor_last_y = ypos;
