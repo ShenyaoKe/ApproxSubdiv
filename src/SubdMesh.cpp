@@ -1,4 +1,5 @@
 #include "SubdMesh.h"
+#include "GregroryPatch.hh"
 
 SubdMesh::SubdMesh(const char* filename)
 {

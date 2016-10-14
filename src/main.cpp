@@ -4,7 +4,7 @@
 int main()
 {
 	string filename;
-#if DEBUG
+#if _DEBUG
 	filename = "scene/obj/dragon_scaled.obj";
 #else
 	cout << "Input filename: ";
