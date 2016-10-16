@@ -120,16 +120,6 @@ void initGL()
 	glBlendEquation(GL_FUNC_ADD);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glClearColor(0.6, 0.6, 0.6, 1.0);
-
-	Matrix4x4 testV = Matrix4x4::LookAt(Point3f(5, 3, 5), Point3f(0, 0, 0), Vector3f(0, 1, 0));
-	Matrix4x4 testP = Matrix4x4::Perspective(54.3f, 640.0f / 480.0f, 0.01f, 100.0f);
-	const float* testVPtr = view_cam->world_to_cam();// testV.data();
-	const float* testPPtr = testP.data();
-	cout << "View matrix\n";
-	for (int i = 0; i < 16; i++) cout << " " << *(testVPtr + i);
-	cout << "\nProject matrix\n";
-	for (int i = 0; i < 16; i++) cout << " " << *(testPPtr + i);
-	cout << "\n";
 }
 
 void window_refresh_callback(GLFWwindow* window)

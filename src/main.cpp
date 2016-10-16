@@ -4,12 +4,11 @@
 int main()
 {
 	string filename;
-#if _DEBUG
+#ifdef _DEBUG
 	filename = "scene/obj/dragon_scaled.obj";
 #else
 	cout << "Input filename: ";
 	cin >> filename;
-
 #endif // _DEBUG
 	model_mesh = new SubdMesh(filename.c_str());
 
