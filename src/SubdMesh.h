@@ -38,6 +38,9 @@ private:
 	Point3f edgeCenter(uint32_t heid) const;
 
 	void initPatch();
+	void genBezierPatch(
+		const vector<bool> &bad_face_hash
+	);
 	void genGregoryPatch(
 		vector<uint32_t> &vValenceCount,
 		vector<uint32_t> &irreg_faces
