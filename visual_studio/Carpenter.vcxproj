@@ -14,7 +14,7 @@
     <ProjectGuid>{C2872F67-2743-4501-A998-0DE1ED5B6886}</ProjectGuid>
     <RootNamespace>ApproxSubdiv</RootNamespace>
     <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>
-    <ProjectName>ApproxSubdiv</ProjectName>
+    <ProjectName>Carpenter</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">

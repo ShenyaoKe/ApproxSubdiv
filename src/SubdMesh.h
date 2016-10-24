@@ -30,18 +30,30 @@ public:
 		vector<unsigned int>* idx_array = nullptr) const;
 
 	void getPatch(BufferTrait &trait) const;
+	void getPatch(BufferTrait &bezier_trait,
+		BufferTrait &gregory_trait) const;
 	void savePatch() const;
 private:
+	Point3f faceCenter(uint32_t fid) const;
+	Point3f edgeCenter(uint32_t heid) const;
+
 	void initPatch();
+	void genGregoryPatch(
+		vector<uint32_t> &vValenceCount,
+		vector<uint32_t> &irreg_faces
+	);
 
 private:
-	static const uint32_t sPatchSize = 16;
+	static const uint32_t sBezierPatchSize = 16;
+	static const uint32_t sGregoryPatchSize = 20;
+
 	vector<Point3f> verts;
 	vector<Point2f> uvs;
 	vector<Normal3f> norms;
 	vector<PolyIndex> fids;
 
 	unique_ptr<HDS_Mesh> mHDSMesh;
-	vector<Point3f> patch4;
+	vector<Point3f> bezier_patch;
+	vector<Point3f> gregory_patch;
 };
 

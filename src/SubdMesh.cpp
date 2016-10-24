@@ -8,6 +8,7 @@ SubdMesh::SubdMesh(const char* filename)
 		printf("file %s load successfully!\n", filename);
 		mHDSMesh.reset(buildHalfEdgeMesh(verts, fids));
 		initPatch();
+		savePatch();
 	}
 }
 
@@ -44,21 +45,39 @@ void SubdMesh::exportIndexedVBO(
 
 void SubdMesh::getPatch(BufferTrait &trait) const
 {
-	trait.data = (void*)(patch4.data());
-	trait.count = patch4.size();
+	trait.data = (void*)(bezier_patch.data());
+	trait.count = bezier_patch.size();
 	trait.size = sizeof(Point3f) * trait.count;
 	trait.offset = 0;
 	trait.stride = sizeof(Point3f);
 }
 
+void SubdMesh::getPatch(
+	BufferTrait &bezier_trait,
+	BufferTrait &gregory_trait) const
+{
+	bezier_trait.data = (void*)(bezier_patch.data());
+	bezier_trait.count = bezier_patch.size();
+	bezier_trait.size = sizeof(Point3f) * bezier_trait.count;
+	bezier_trait.offset = 0;
+	bezier_trait.stride = sizeof(Point3f);
+
+	gregory_trait.data = (void*)(gregory_patch.data());
+	gregory_trait.count = gregory_patch.size();
+	gregory_trait.size = sizeof(Point3f) * gregory_trait.count;
+	gregory_trait.offset = 0;
+	gregory_trait.stride = sizeof(Point3f);
+}
+
 void SubdMesh::savePatch() const
 {
 	FILE* fp = fopen("patch.obj", "w");
-	for (int i = 0; i < patch4.size(); i++)
+	/*uint32_t bezier_patch_size = bezier_patch.size();
+	for (int i = 0; i < bezier_patch.size(); i++)
 	{
-		fprintf(fp, "v %f %f %f\n", patch4[i].x, patch4[i].y, patch4[i].z);
+		fprintf(fp, "v %f %f %f\n", bezier_patch[i].x, bezier_patch[i].y, bezier_patch[i].z);
 	}
-	for (int i = 0; i < patch4.size()/16; i++)
+	for (int i = 0; i < bezier_patch.size()/16; i++)
 	{
 		int idx = i * 16 + 1;
 		fprintf(fp, "f %d %d %d %d\n", idx + 0, idx + 1, idx + 5, idx + 4);
@@ -72,20 +91,54 @@ void SubdMesh::savePatch() const
 		fprintf(fp, "f %d %d %d %d\n", idx + 8, idx + 9, idx + 13, idx + 12);
 		fprintf(fp, "f %d %d %d %d\n", idx + 9, idx + 10, idx + 14, idx + 13);
 		fprintf(fp, "f %d %d %d %d\n", idx + 10, idx + 11, idx + 15, idx + 14);
+	}*/
+	for (auto &p : gregory_patch)
+	{
+		fprintf(fp, "v %f %f %f\n", p.x, p.y, p.z);
+	}
+	for (int i = 0; i < gregory_patch.size() / 4; i++)
+	{
+		int idx = i * 4 + 1;
+		fprintf(fp, "f %d %d %d %d\n", idx + 0, idx + 1, idx + 2, idx + 3);
 	}
 	fclose(fp);
+}
+
+Point3f SubdMesh::faceCenter(uint32_t fid) const
+{
+	auto he = mHDSMesh->heFromFace(fid);
+	auto curHE = he;
+	Point3f cp;
+	uint32_t pCount = 0;
+	do
+	{
+		cp += verts[curHE->vid];
+		pCount++;
+	} while (curHE != he);
+	if (pCount > 0)
+	{
+		cp /= pCount;
+	}
+	return cp;
+}
+
+Point3f SubdMesh::edgeCenter(uint32_t heid) const
+{
+	auto he = &mHDSMesh->halfedges[heid];
+	return (verts[he->vid] + verts[he->flip()->vid]) * 0.5f;
 }
 
 void SubdMesh::initPatch()
 {
 	vector<uint32_t> vValenceCount(verts.size(), 0);
-	vector<bool> bad_faces(fids.size(), false);
-	vector<bool> bad_vertices(verts.size(), false);
+	vector<uint32_t> badfaces;
+	vector<bool> bad_face_hash(fids.size(), false);
+	vector<bool> bad_vert_hash(verts.size(), false);
 
 	for (int i = 0; i < fids.size() ; i++)
 	{
 		auto &vids = fids[i].v;
-		bad_faces[i] = fids[i].size != 4;
+		bad_face_hash[i] = fids[i].size != 4;
 
 		for_each(vids.begin(), vids.end(), [&vValenceCount] (uint32_t vid) {
 			vValenceCount[vid - 1]++;
@@ -96,29 +149,29 @@ void SubdMesh::initPatch()
 	{
 		if (vValenceCount[i] != 4)
 		{
-			bad_vertices[i] = true;
+			bad_vert_hash[i] = true;
 			badvcount++;
-			auto he = mHDSMesh->heFromVert(i);
-			auto curHE = he;
-			do 
+			he_t* he = mHDSMesh->heFromVert(i);
+			he_t* curHE = he;
+			do
 			{
-				bad_faces[curHE->fid] = true;
+				bad_face_hash[curHE->fid] = true;
 				curHE = curHE->flip()->next();
 			} while (curHE != he);
 		}
 	}
 	//////////////////////////////////////////////////////////////////////////
 	// Patch Generation
-	patch4.clear();
+	bezier_patch.clear();
 
-	patch4.reserve(fids.size() * sPatchSize);
+	bezier_patch.reserve(fids.size() * sBezierPatchSize);
 	for (size_t i = 0, pOffset = 0; i < fids.size(); i++)
 	{
 		auto &fid = fids[i];
 		// Offset in patch array
-		if (bad_faces[i]) continue;
+		if (bad_face_hash[i]) continue;
 
-		patch4.resize(pOffset + sPatchSize);
+		bezier_patch.resize(pOffset + sBezierPatchSize);
 		// calculate patch
 		uint32_t vid[16];
 		//////////////////////////////////////////////////////////////////////////
@@ -174,25 +227,104 @@ void SubdMesh::initPatch()
 				+ (verts[vid[id2]] + verts[vid[id3]]) * 2
 				+ verts[vid[id_diag]]) / 9.0f;
 		};
-		patch4[pOffset] = cornerPatch(5);
-		patch4[pOffset + 3] = cornerPatch(6);
-		patch4[pOffset + 12] = cornerPatch(9);
-		patch4[pOffset + 15] = cornerPatch(10);
+		bezier_patch[pOffset] = cornerPatch(5);
+		bezier_patch[pOffset + 3] = cornerPatch(6);
+		bezier_patch[pOffset + 12] = cornerPatch(9);
+		bezier_patch[pOffset + 15] = cornerPatch(10);
 
-		patch4[pOffset + 1] = edgePatch(5, 6);
-		patch4[pOffset + 2] = edgePatch(6, 5);
-		patch4[pOffset + 4] = edgePatch(5, 9);
-		patch4[pOffset + 8] = edgePatch(9, 5);
-		patch4[pOffset + 7] = edgePatch(6, 10);
-		patch4[pOffset + 11] = edgePatch(10, 6);
-		patch4[pOffset + 13] = edgePatch(9, 10);
-		patch4[pOffset + 14] = edgePatch(10, 9);
+		bezier_patch[pOffset + 1] = edgePatch(5, 6);
+		bezier_patch[pOffset + 2] = edgePatch(6, 5);
+		bezier_patch[pOffset + 4] = edgePatch(5, 9);
+		bezier_patch[pOffset + 8] = edgePatch(9, 5);
+		bezier_patch[pOffset + 7] = edgePatch(6, 10);
+		bezier_patch[pOffset + 11] = edgePatch(10, 6);
+		bezier_patch[pOffset + 13] = edgePatch(9, 10);
+		bezier_patch[pOffset + 14] = edgePatch(10, 9);
 
-		patch4[pOffset + 5] = interialPatch(5, 6, 9, 10);
-		patch4[pOffset + 6] = interialPatch(6, 5, 10, 9);
-		patch4[pOffset + 9] = interialPatch(9, 5, 10, 6);
-		patch4[pOffset + 10] = interialPatch(10, 6, 9, 5);
+		bezier_patch[pOffset + 5] = interialPatch(5, 6, 9, 10);
+		bezier_patch[pOffset + 6] = interialPatch(6, 5, 10, 9);
+		bezier_patch[pOffset + 9] = interialPatch(9, 5, 10, 6);
+		bezier_patch[pOffset + 10] = interialPatch(10, 6, 9, 5);
 		// Move on
-		pOffset += sPatchSize;
+		pOffset += sBezierPatchSize;
+	}
+	bezier_patch.shrink_to_fit();
+
+	int badcount = 0;
+	for (int i = 0; i < bad_face_hash.size(); i++)
+	{
+		if (bad_face_hash[i])
+		{
+			badfaces.push_back(i);
+		}
+	}
+	genGregoryPatch(vValenceCount, badfaces);
+}
+
+void SubdMesh::genGregoryPatch(
+	vector<uint32_t> &vValenceCount,
+	vector<uint32_t> &irreg_faces
+)
+{
+	unordered_map<uint32_t, Point3f> fCenters;
+	unordered_map<uint32_t, Point3f> heCenters;
+	uint32_t patchCount = irreg_faces.size();
+	// calculate face center and edge center
+	for (uint32_t i = 0; i < patchCount; i++)
+	{
+		he_t* he = mHDSMesh->heFromFace(i);
+		he_t* curHE = he;
+		Point3f fc(0, 0, 0);
+		do 
+		{
+			if (heCenters.find(curHE->index) == heCenters.end())
+			{
+				auto hec = (verts[curHE->vid]
+					+ verts[curHE->flip()->vid]) * 0.5f;
+				heCenters.insert(make_pair(curHE->index, hec));
+				heCenters.insert(make_pair(curHE->flip()->index, hec));
+			}
+			fc += verts[curHE->vid];
+			curHE = curHE->next();
+		} while (curHE != he);
+		fCenters.insert(make_pair(i, fc * 0.25f));
+	}
+
+	gregory_patch.reserve(patchCount * 4);// sGregoryPatchSize);
+
+	size_t pOffset = 0;
+	const uint32_t subPatchSize = 1;// 5;
+	for (uint32_t i = 0; i < patchCount; i++)
+	{
+		uint32_t fid = irreg_faces[i];
+		PolyIndex &fIdx = fids[fid];
+		if (fIdx.size != 4) continue;
+
+		gregory_patch.resize(pOffset + 4);// sGregoryPatchSize);
+
+		he_t* he = mHDSMesh->heFromFace(fid);
+		he_t* curHE = he;
+		// Loop over current face
+		for (uint32_t j = 0; j < 4; j++)
+		{
+			uint32_t vid = curHE->vid;
+			uint32_t vValence = vValenceCount[vid];
+			auto corner_coef = Gregory::corner_coef(vValence);
+			Point3f &curP0 = gregory_patch[pOffset + j * subPatchSize];
+			do
+			{
+				if (!mHDSMesh->faceFromHe(curHE->index)->isNullFace)
+				{
+					curP0 += faceCenter(curHE->fid);
+					curP0 += edgeCenter(curHE->index);
+				}
+				curHE = curHE->rotCCW();
+			} while (curHE != he);
+			curP0 *= corner_coef[1];
+			curP0 += corner_coef[0] * verts[vid];
+
+			he = curHE = curHE->next();
+		}
+		pOffset += 4;// sGregoryPatchSize;
 	}
 }
