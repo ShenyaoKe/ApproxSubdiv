@@ -42,9 +42,10 @@ inline GFloat theta_valence(int N) {
 	return 1.0 / sqrt(4 + sqr(cos(M_PI / N)));
 }
 inline GFloat lamda_valence(int N) {
+	GFloat invN = 1.0 / GFloat(N);
 	return 0.0625 * (
-		5 + cos(M_TWOPI / N)
-		+ cos(M_PI / N) * sqrt(18 + 2 * cos(M_TWOPI / N))
+		5.0 + cos(M_TWOPI * invN)
+		+ cos(M_PI * invN) * sqrt(18.0 + 2.0 * cos(M_TWOPI * invN))
 		);
 }
 
@@ -74,27 +75,27 @@ inline GFloat edge_theta(int valence)
 	}
 }
 // Precomputed lambda for calculating edge points
-const GFloat lambda_v2 = lamda_valence(2);//TODO: not sure how to handle v2 yet
-const GFloat lambda_v3 = lamda_valence(3);
-const GFloat lambda_v4 = lamda_valence(4);
-const GFloat lambda_v5 = lamda_valence(5);
-const GFloat lambda_v6 = lamda_valence(6);
-const GFloat lambda_v7 = lamda_valence(7);
-const GFloat lambda_v8 = lamda_valence(8);
-const GFloat lambda_v9 = lamda_valence(9);
+const GFloat eigen_v2 = lamda_valence(2);//TODO: not sure how to handle v2 yet
+const GFloat eigen_v3 = lamda_valence(3);
+const GFloat eigen_v4 = lamda_valence(4);
+const GFloat eigen_v5 = lamda_valence(5);
+const GFloat eigen_v6 = lamda_valence(6);
+const GFloat eigen_v7 = lamda_valence(7);
+const GFloat eigen_v8 = lamda_valence(8);
+const GFloat eigen_v9 = lamda_valence(9);
 // query function for lambda
-inline GFloat edge_lambda(int valence)
+inline GFloat edge_eigen_val(int valence)
 {
 	switch (valence)
 	{
-	case 2: return lambda_v2;
-	case 3: return lambda_v3;
-	case 4: return lambda_v4;
-	case 5: return lambda_v5;
-	case 6: return lambda_v6;
-	case 7: return lambda_v7;
-	case 8: return lambda_v8;
-	case 9: return lambda_v9;
+	case 2: return eigen_v2;
+	case 3: return eigen_v3;
+	case 4: return eigen_v4;
+	case 5: return eigen_v5;
+	case 6: return eigen_v6;
+	case 7: return eigen_v7;
+	case 8: return eigen_v8;
+	case 9: return eigen_v9;
 	default: return 0;
 	}
 }
@@ -152,14 +153,14 @@ inline GFloat cosPi(int num, int den)
 }
 inline GFloat edgeP_coefMi(int i, int N)
 {
-	while (i >= 2 * N) i -= 2 * N;
+	//while (i >= 2 * N) i -= 2 * N;
 
 	return (1.0 - edge_theta(N)*cosPi(1, N)) * cosPi(i * 2, N);
 }
 
 inline GFloat edgeP_coefCi(int i, int N)
 {
-	while (i >= 2 * N) i -= 2 * N;
+	//while (i >= 2 * N) i -= 2 * N;
 
 	return 2 * edge_theta(N) * cosPi(i * 2 + 1, N);
 }

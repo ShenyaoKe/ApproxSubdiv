@@ -99,11 +99,15 @@ void SubdMesh::savePatch() const
 	for (int i = 0; i < gregory_patch.size() / sGregoryPatchSize; i++)
 	{
 		int idx = i * sGregoryPatchSize + 1 + bezier_patch_size;
-		fprintf(fp, "f %d %d %d %d %d %d %d %d\n",
-			idx + 0, idx + 1,
-			idx + 5, idx + 6,
-			idx + 10, idx + 11,
-			idx + 15, idx + 16);
+		fprintf(fp,
+			"f %d %d %d\n"
+			"f %d %d %d\n"
+			"f %d %d %d\n"
+			"f %d %d %d\n",
+			idx + 0, idx + 1, idx + 2,
+			idx + 5, idx + 6, idx + 7,
+			idx + 10, idx + 11, idx + 12,
+			idx + 15, idx + 16, idx + 17);
 	}
 	fclose(fp);
 }
@@ -323,6 +327,7 @@ void SubdMesh::genGregoryPatch(
 			auto corner_coef = Gregory::corner_coef(vValence);
 			Point3f* curP0 = &gregory_patch[pOffset + j * subPatchSize];
 			Point3f* curE0_plus = curP0 + 1;
+			Point3f* curE0_minus = curP0 + 2;
 			// Loop over current vertex
 			uint32_t valenceI = 0;
 			do
@@ -350,7 +355,8 @@ void SubdMesh::genGregoryPatch(
 					}
 					// Accumulate corner point
 					*curP0 += fCenters.at(curFid) + heCenters.at(curHEid);
-					*curE0_plus += Gregory::edgeP_coefMi(valenceI, vValence) * heCenters.at(curHEid)
+					*curE0_plus +=
+						Gregory::edgeP_coefMi(valenceI, vValence) * heCenters.at(curHEid)
 						+ Gregory::edgeP_coefCi(valenceI, vValence) * fCenters.at(curFid);
 
 					valenceI++;
@@ -359,8 +365,47 @@ void SubdMesh::genGregoryPatch(
 			} while (curHE != he);
 			*curP0 *= corner_coef[1];
 			*curP0 += corner_coef[0] * verts[vid];
-			*curE0_plus *= 4.0 / 3.0 / vValence * Gregory::edge_lambda(vValence);
+			*curE0_plus *= 4.0 / 3.0 / vValence * Gregory::edge_eigen_val(vValence);
 			*curE0_plus += *curP0;
+			/************************************************************************/
+			/* e-                                                                   */
+			/************************************************************************/
+			valenceI = 0;
+			he_t* prevHE = curHE->rotCCW();
+			do
+			{
+				if (!mHDSMesh->faceFromHe(prevHE->index)->isNullFace)
+				{
+					// TODO: cache out face center and edge center
+					uint32_t curFid = prevHE->fid;
+					uint32_t curHEid = prevHE->index;
+					if (fCenters.find(curFid) == fCenters.end())
+					{
+						fCenters.insert(make_pair(
+							curFid, faceCenter(curFid)
+						));
+					}
+					if (heCenters.find(curHEid) == heCenters.end())
+					{
+						auto hec = edgeCenter(curHEid);
+						heCenters.insert(make_pair(
+							curHEid, hec
+						));
+						heCenters.insert(make_pair(
+							prevHE->flip()->index, hec
+						));
+					}
+					*curE0_minus += Gregory::edgeP_coefMi(valenceI, vValence) * heCenters.at(curHEid)
+						+ Gregory::edgeP_coefCi(valenceI, vValence) * fCenters.at(curFid);
+
+					valenceI++;
+				}
+				prevHE = prevHE->rotCCW();
+			} while (prevHE != curHE->rotCCW());
+			*curE0_minus *= 2.0 / vValence;
+			*curE0_minus *= 2.0 / 3.0 *  Gregory::edge_eigen_val(vValence);
+			*curE0_minus += *curP0;
+			// End of e0-
 
 			he = curHE = curHE->next();
 		}
