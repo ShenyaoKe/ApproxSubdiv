@@ -102,8 +102,8 @@ inline GFloat edge_eigen_val(int valence)
 
 const GFloat cosPi_3[] = { 1, 0.5, -0.5, -1, -0.5, 0.5 };
 const GFloat cosPi_4[] = {
-	1, sqr(2) * 0.5, 0, -sqr(2) * 0.5,
-	-1, -sqr(2) * 0.5, 0, sqr(2) * 0.5
+	1, sqrt(2) * 0.5, 0, -sqrt(2) * 0.5,
+	-1, -sqrt(2) * 0.5, 0, sqrt(2) * 0.5
 };
 const GFloat cosPi_5[] = {
 	1, cos(M_PI*0.2), cos(M_PI*0.4), cos(M_PI*0.6), cos(M_PI*0.8),
@@ -153,15 +153,11 @@ inline GFloat cosPi(int num, int den)
 }
 inline GFloat edgeP_coefMi(int i, int N)
 {
-	//while (i >= 2 * N) i -= 2 * N;
-
 	return (1.0 - edge_theta(N)*cosPi(1, N)) * cosPi(i * 2, N);
 }
 
 inline GFloat edgeP_coefCi(int i, int N)
 {
-	//while (i >= 2 * N) i -= 2 * N;
-
 	return 2 * edge_theta(N) * cosPi(i * 2 + 1, N);
 }
 }

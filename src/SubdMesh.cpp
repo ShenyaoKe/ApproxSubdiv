@@ -358,7 +358,7 @@ void SubdMesh::genGregoryPatch(
 					*curE0_plus +=
 						Gregory::edgeP_coefMi(valenceI, vValence) * heCenters.at(curHEid)
 						+ Gregory::edgeP_coefCi(valenceI, vValence) * fCenters.at(curFid);
-
+					
 					valenceI++;
 				}
 				curHE = curHE->rotCCW();
@@ -370,6 +370,7 @@ void SubdMesh::genGregoryPatch(
 			/************************************************************************/
 			/* e-                                                                   */
 			/************************************************************************/
+			// TODO: remove redundant calculation for e- and p
 			valenceI = 0;
 			he_t* prevHE = curHE->rotCCW();
 			do
