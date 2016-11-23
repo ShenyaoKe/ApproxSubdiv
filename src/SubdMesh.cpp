@@ -100,14 +100,14 @@ void SubdMesh::savePatch() const
 	{
 		int idx = i * sGregoryPatchSize + 1 + bezier_patch_size;
 		fprintf(fp,
-			"f %d %d %d\n"
-			"f %d %d %d\n"
-			"f %d %d %d\n"
-			"f %d %d %d\n",
-			idx + 0, idx + 1, idx + 2,
-			idx + 5, idx + 6, idx + 7,
-			idx + 10, idx + 11, idx + 12,
-			idx + 15, idx + 16, idx + 17);
+			"f %d %d %d %d %d\n"
+			"f %d %d %d %d %d\n"
+			"f %d %d %d %d %d\n"
+			"f %d %d %d %d %d\n",
+			idx + 0, idx + 1, idx + 3, idx + 4, idx + 2,
+			idx + 5, idx + 6, idx + 8, idx + 9, idx + 7,
+			idx + 10, idx + 11, idx + 13, idx + 14, idx + 12,
+			idx + 15, idx + 16, idx + 18, idx + 19, idx + 17);
 	}
 	fclose(fp);
 }
@@ -320,6 +320,7 @@ void SubdMesh::genGregoryPatch(
 		he_t* he = mHDSMesh->heFromFace(fid);
 		he_t* curHE = he;
 		// Loop over current face
+		// for each corner
 		for (uint32_t j = 0; j < 4; j++)
 		{
 			uint32_t vid = curHE->vid;
@@ -328,7 +329,10 @@ void SubdMesh::genGregoryPatch(
 			Point3f* curP0 = &gregory_patch[pOffset + j * subPatchSize];
 			Point3f* curE0_plus = curP0 + 1;
 			Point3f* curE0_minus = curP0 + 2;
-			// Loop over current vertex
+			// Loop over adjacent edges and vertices around current vertex
+			/************************************************************************/
+			/* P and e+                                                             */
+			/************************************************************************/
 			uint32_t valenceI = 0;
 			do
 			{
@@ -409,6 +413,50 @@ void SubdMesh::genGregoryPatch(
 			// End of e0-
 
 			he = curHE = curHE->next();
+		}
+		// After all corner points Pi and edge points e+/e- are calculated
+		// Calculate face points
+		curHE = he;
+		for (uint32_t j = 0; j < 4; j++)
+		{
+			// calculate c0,c1,c2
+			uint32_t vid = curHE->vid;
+			const int dFaceType = 3;//it's 
+			const Float inv_d = 1.0 / dFaceType;
+			auto c0 = Gregory::cosPi(2, vValenceCount[vid]);
+			auto c1 = Gregory::cosPi(2, vValenceCount[curHE->next()->vid]);
+			auto c2 = Gregory::cosPi(2, vValenceCount[curHE->prev()->vid]);
+
+			Point3f* curP0 = &gregory_patch[pOffset + j * subPatchSize];
+			Point3f* e_plus = curP0 + 1;
+			Point3f* e_minus = curP0 + 2;
+			Point3f* f_plus = curP0 + 3;
+			Point3f* f_minus = curP0 + 4;
+			Point3f* e_prev_plus = j == 0 ? curP0 + 16 : curP0 - 4;
+			Point3f* e_next_minus = j == 3 ? curP0 - 13 : curP0 + 7;
+			// f+
+			// get r+
+			Vector3f r_plus =
+				(heCenters.at(curHE->prev()->index) - heCenters.at(curHE->rotCW()->index)) / 3.0
+				+ (fCenters.at(curHE->fid) - fCenters.at(curHE->rotCW()->fid)) * 2.0 / 3.0;
+
+			*f_plus = (c1 * *curP0
+				+ (dFaceType - 2 * c0 - c1) * *e_plus
+				+ 2 * c0 * *e_next_minus
+				+ r_plus) * inv_d;
+			// f-
+			// get r-
+			Vector3f r_minus =
+				(heCenters.at(curHE->index) - heCenters.at(curHE->rotCCW()->prev()->index)) / 3.0
+				+ (fCenters.at(curHE->fid) - fCenters.at(curHE->rotCCW()->fid)) * 2.0 / 3.0;
+
+			*f_minus = (c2 * *curP0
+				+ (dFaceType - 2 * c0 - c2) * *e_minus
+				+ 2 * c0 * *e_prev_plus
+				+ r_minus) * inv_d;
+
+			// move to next edge
+			curHE = curHE->next();
 		}
 		pOffset += sGregoryPatchSize;
 	}
