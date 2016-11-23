@@ -56,7 +56,26 @@ private:
 	vector<PolyIndex> fids;
 
 	unique_ptr<HDS_Mesh> mHDSMesh;
+	// Bezier Patch
+	// 12---13---14---15
+	// |    |    |    |
+	// 08---09---10---11
+	// |    |    |    |
+	// 04---05---06---07
+	// |    |    |    |
+	// 00---01---02---03
 	vector<Point3f> bezier_patch;
+	// Gregory Patch Layout
+	// 15-----17-----11-----10
+	// |      |      |      |
+	// |      19     13     |
+	// 16--18          14--12
+	// |                    |
+	// |                    |
+	// 02--04          08--06
+	// |      03     09     |
+	// |      |      |      |
+	// 00-----01-----07-----05
 	vector<Point3f> gregory_patch;
 };
 
