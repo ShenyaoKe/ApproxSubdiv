@@ -31,7 +31,7 @@ public:
 
 	void getPatch(BufferTrait &trait) const;
 	void getPatch(BufferTrait &bezier_trait,
-		BufferTrait &gregory_trait) const;
+					BufferTrait &gregory_trait) const;
 	void savePatch() const;
 private:
 	Point3f faceCenter(uint32_t fid) const;

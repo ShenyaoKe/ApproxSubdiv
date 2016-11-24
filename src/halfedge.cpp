@@ -92,8 +92,6 @@ HDS_Mesh* buildHalfEdgeMesh(
 	// for each half edge, find its flip
 	for (auto heit : heMap)
 	{
-		int from, to;
-
 		hepair_t hePair = heit.first;
 		int32_t heID = heit.second;
 

@@ -1,4 +1,4 @@
-#version 430
+#version 450
 in layout(location = 0) vec3 vp;
 
 //uniform mat4 view_matrix, proj_matrix;

@@ -18,11 +18,16 @@ unique_ptr<perspCamera> view_cam = make_unique<perspCamera>(
 SubdMesh* model_mesh;
 vector<GLfloat> model_verts;// vertices vbo
 vector<GLuint> model_idx;// Normal coordinates vbo
-BufferTrait patchTrats;
 GLuint model_vert_vbo, model_ibo, model_vao;
-GLuint patch_vert_vbo, patch_vao;
 unique_ptr<GLSLProgram> model_shader;
-unique_ptr<GLSLProgram> patch_shader;
+// Bezier Patch Buffer Objects
+GLuint bPatch_vert_vbo, bPatch_vao;
+BufferTrait bezier_patch_trait;
+unique_ptr<GLSLProgram> bPatch_shader;
+// Gregory Patch Buffer Objects
+GLuint gPatch_vert_vbo, gPatch_vao;
+BufferTrait gregory_patch_trait;
+unique_ptr<GLSLProgram> gPatch_shader;
 
 const GLubyte* renderer;
 const GLubyte* version;
@@ -60,33 +65,62 @@ void bindMesh()
 }
 
 
-void bindPatch()
+void bindBezierPatch()
 {
-	glDeleteBuffers(1, &patch_vert_vbo);
-	glDeleteVertexArrays(1, &patch_vao);
+	glDeleteBuffers(1, &bPatch_vert_vbo);
+	glDeleteVertexArrays(1, &bPatch_vao);
 
-	glCreateBuffers(1, &patch_vert_vbo);
+	glCreateBuffers(1, &bPatch_vert_vbo);
 	glNamedBufferData(
-		patch_vert_vbo,
-		patchTrats.size,
-		patchTrats.data,
+		bPatch_vert_vbo,
+		bezier_patch_trait.size,
+		bezier_patch_trait.data,
 		GL_STATIC_DRAW
 	);
 
 	// VAO
-	glCreateVertexArrays(1, &patch_vao);
-	glEnableVertexArrayAttrib(patch_vao, 0);
+	glCreateVertexArrays(1, &bPatch_vao);
+	glEnableVertexArrayAttrib(bPatch_vao, 0);
 
 	// Setup the formats
-	glVertexArrayAttribFormat(patch_vao, 0, 3, GL_FLOAT, GL_FALSE, 0);
+	glVertexArrayAttribFormat(bPatch_vao, 0, 3, GL_FLOAT, GL_FALSE, 0);
 	glVertexArrayVertexBuffer(
-		patch_vao,
+		bPatch_vao,
 		0,
-		patch_vert_vbo,
-		patchTrats.offset,
-		patchTrats.stride
+		bPatch_vert_vbo,
+		bezier_patch_trait.offset,
+		bezier_patch_trait.stride
 	);
-	glVertexArrayAttribBinding(patch_vao, 0, 0);
+	glVertexArrayAttribBinding(bPatch_vao, 0, 0);
+}
+
+void bindGregoryPatch()
+{
+    glDeleteBuffers(1, &gPatch_vert_vbo);
+    glDeleteVertexArrays(1, &gPatch_vao);
+
+    glCreateBuffers(1, &gPatch_vert_vbo);
+    glNamedBufferData(
+        gPatch_vert_vbo,
+        gregory_patch_trait.size,
+        gregory_patch_trait.data,
+        GL_STATIC_DRAW
+    );
+
+    // VAO
+    glCreateVertexArrays(1, &gPatch_vao);
+    glEnableVertexArrayAttrib(gPatch_vao, 0);
+
+    // Setup the formats
+    glVertexArrayAttribFormat(gPatch_vao, 0, 3, GL_FLOAT, GL_FALSE, 0);
+    glVertexArrayVertexBuffer(
+        gPatch_vao,
+        0,
+        gPatch_vert_vbo,
+        gregory_patch_trait.offset,
+        gregory_patch_trait.stride
+    );
+    glVertexArrayAttribBinding(gPatch_vao, 0, 0);
 }
 
 void initGL()
@@ -102,17 +136,24 @@ void initGL()
 	/* geometry to use. these are 3 xyz points (9 floats total) to make a triangle */
 	model_shader = make_unique<GLSLProgram>(
 		"shaders/quad_vs.glsl", "shaders/quad_fs.glsl", "shaders/quad_gs.glsl");
-	patch_shader = make_unique<GLSLProgram>(
+	bPatch_shader = make_unique<GLSLProgram>(
 		"shaders/patch_vs.glsl",
 		"shaders/patch_fs.glsl",
 		nullptr,
 		"shaders/patch_tc.glsl",
 		"shaders/patch_te.glsl");
+    gPatch_shader = make_unique<GLSLProgram>(
+        "shaders/patch_vs.glsl",
+        "shaders/patch_fs.glsl",
+        nullptr,
+        "shaders/gregory_patch_tc.glsl",
+        "shaders/gregory_patch_te.glsl");
 
 	model_mesh->exportIndexedVBO(&model_verts, nullptr, nullptr, &model_idx);
 	bindMesh();
-	model_mesh->getPatch(patchTrats);
-	bindPatch();
+	model_mesh->getPatch(bezier_patch_trait, gregory_patch_trait);
+	bindBezierPatch();
+    bindGregoryPatch();
 
 	glEnable(GL_BLEND);
 	glEnable(GL_DEPTH_TEST); // enable depth-testing
@@ -127,23 +168,23 @@ void window_refresh_callback(GLFWwindow* window)
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	if (!draw_wireframe)
 	{
-		glEnable(GL_CULL_FACE);
-		glCullFace(GL_BACK); // cull back face
+		//glEnable(GL_CULL_FACE);
+		//glCullFace(GL_BACK); // cull back face
 		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	}
 	else
 	{
 		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 	}
-
-	glBindVertexArray(patch_vao);
-	patch_shader->use_program();
-	// Draw something
-	glUniformMatrix4fv((*patch_shader)["view_matrix"], 1, GL_FALSE, view_cam->world_to_cam());
-	glUniformMatrix4fv((*patch_shader)["proj_matrix"], 1, GL_FALSE, view_cam->cam_to_screen());
-	glUniform1f((*patch_shader)["segments"], tess_seg);
+    
+	// Draw Bezier Patches
+	glBindVertexArray(bPatch_vao);
+	bPatch_shader->use_program();
+	glUniformMatrix4fv((*bPatch_shader)["view_matrix"], 1, GL_FALSE, view_cam->world_to_cam());
+	glUniformMatrix4fv((*bPatch_shader)["proj_matrix"], 1, GL_FALSE, view_cam->cam_to_screen());
+	glUniform1f((*bPatch_shader)["segments"], tess_seg);
 	glPatchParameteri(GL_PATCH_VERTICES, 16);
-	glDrawArrays(GL_PATCHES, 0, patchTrats.count);
+	glDrawArrays(GL_PATCHES, 0, bezier_patch_trait.count);
 
 	if (draw_cage)
 	{
@@ -156,6 +197,15 @@ void window_refresh_callback(GLFWwindow* window)
 		glUniformMatrix4fv((*model_shader)["proj_matrix"], 1, GL_FALSE, view_cam->cam_to_screen());
 		glDrawElements(GL_LINES_ADJACENCY, model_idx.size(), GL_UNSIGNED_INT, 0);
 	}
+    
+    // Draw Gregory Patches
+    glBindVertexArray(gPatch_vao);
+    gPatch_shader->use_program();
+    glUniformMatrix4fv((*gPatch_shader)["view_matrix"], 1, GL_FALSE, view_cam->world_to_cam());
+    glUniformMatrix4fv((*gPatch_shader)["proj_matrix"], 1, GL_FALSE, view_cam->cam_to_screen());
+    glUniform1f((*gPatch_shader)["segments"], tess_seg);
+    glPatchParameteri(GL_PATCH_VERTICES, 20);
+    glDrawArrays(GL_PATCHES, 0, gregory_patch_trait.count);
 
 	glfwSwapBuffers(window);
 }

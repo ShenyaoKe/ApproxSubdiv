@@ -8,7 +8,7 @@ SubdMesh::SubdMesh(const char* filename)
 		printf("file %s load successfully!\n", filename);
 		mHDSMesh.reset(buildHalfEdgeMesh(verts, fids));
 		initPatch();
-		savePatch();
+		//savePatch();
 	}
 }
 
@@ -18,8 +18,8 @@ SubdMesh::~SubdMesh()
 
 void SubdMesh::exportIndexedVBO(
 	vector<Float>* vtx_array,
-	vector<Float>* uv_array,
-	vector<Float>* norm_array,
+	vector<Float>* /*uv_array*/,
+	vector<Float>* /*norm_array*/,
 	vector<unsigned int>* idx_array) const
 {
 	vtx_array->reserve(verts.size() * 3);
@@ -52,9 +52,8 @@ void SubdMesh::getPatch(BufferTrait &trait) const
 	trait.stride = sizeof(Point3f);
 }
 
-void SubdMesh::getPatch(
-	BufferTrait &bezier_trait,
-	BufferTrait &gregory_trait) const
+void SubdMesh::getPatch(BufferTrait &bezier_trait,
+                        BufferTrait &gregory_trait) const
 {
 	bezier_trait.data = (void*)(bezier_patch.data());
 	bezier_trait.count = bezier_patch.size();
@@ -172,7 +171,6 @@ void SubdMesh::initPatch()
 	//////////////////////////////////////////////////////////////////////////
 	genBezierPatch(bad_face_hash);
 
-	int badcount = 0;
 	for (int i = 0; i < bad_face_hash.size(); i++)
 	{
 		if (bad_face_hash[i])
@@ -191,7 +189,6 @@ void SubdMesh::genBezierPatch(const vector<bool> &bad_face_hash)
 	bezier_patch.reserve(fids.size() * sBezierPatchSize);
 	for (size_t i = 0, pOffset = 0; i < fids.size(); i++)
 	{
-		auto &fid = fids[i];
 		// Offset in patch array
 		if (bad_face_hash[i]) continue;
 
