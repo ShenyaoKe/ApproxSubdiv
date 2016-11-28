@@ -82,5 +82,8 @@
     <None Include="..\shaders\gregory_patch_gs.glsl">
       <Filter>Shaders</Filter>
     </None>
+    <None Include="..\shaders\gregory_patch_vs.glsl">
+      <Filter>Shaders</Filter>
+    </None>
   </ItemGroup>
 </Project>

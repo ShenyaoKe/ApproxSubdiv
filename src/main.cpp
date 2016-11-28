@@ -5,7 +5,7 @@ int main()
 {
 	string filename;
 #ifdef _DEBUG
-	filename = "scene/obj/dragon_scaled.obj";
+	filename = "scene/obj/sharp_cube.obj";
 #else
 	cout << "Input filename: ";
 	cin >> filename;

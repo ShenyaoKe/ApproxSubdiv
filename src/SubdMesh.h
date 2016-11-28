@@ -45,6 +45,7 @@ private:
 		vector<uint32_t> &vValenceCount,
 		vector<uint32_t> &irreg_faces
 	);
+    void evalGregory() const;
 
 private:
 	static const uint32_t sBezierPatchSize = 16;

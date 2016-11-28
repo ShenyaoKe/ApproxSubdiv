@@ -1,9 +1,6 @@
 #version 450
-layout(quads) in;
-
-uniform mat4 proj_matrix;
-
-out vec3 pos_eye_te;//, norm_eye;
+layout(quads, equal_spacing) in;
+//out vec3 pos_eye_te;//, norm_eye;
 
 vec3 bilinear_pos(vec3 p0, vec3 p1, vec3 p2, vec3 p3, float s, float t)
 {
@@ -28,6 +25,19 @@ void main()
 {
 	float u = gl_TessCoord.x;// (n_layer - 1) * t;
 	float v = gl_TessCoord.y;
+	if ((u == 0 || u == 1) && (v == 0 || v == 1))
+	{
+		vec3 pos_eye_te = bilinear_pos(
+									gl_in[ 0].gl_Position.xyz,
+									gl_in[ 5].gl_Position.xyz,
+									gl_in[10].gl_Position.xyz,
+									gl_in[15].gl_Position.xyz,
+									u, v
+									);
+		gl_Position = vec4(pos_eye_te, 1.0f);
+	}
+	else
+	{
 	// Sample on grid
 	// Face Points
 	vec3 f0 = (      u * gl_in[ 3].gl_Position
@@ -41,7 +51,7 @@ void main()
 			/ (2 - u - v);
 	vec3 f3 = (      u * gl_in[19].gl_Position
 			+  (1 - v) * gl_in[18].gl_Position).xyz
-			/ (2 - u - v);
+			/ (1 + u - v);
 
 	vec3 p[9];
 	// 6 -- 7 -- 8
@@ -102,15 +112,16 @@ void main()
 	p[2] = bilinear_pos(p[3], p[4], p[7], p[6], u, v);
 	p[3] = bilinear_pos(p[4], p[5], p[8], p[7], u, v);
 
-	pos_eye_te = bilinear_pos(p[0], p[1], p[3], p[2], u, v);
+	vec3 pos_eye_te = bilinear_pos(p[0], p[1], p[3], p[2], u, v);
 	/*pos_eye = bilinear_pos(	gl_in[0].gl_Position.xyz,
 						gl_in[5].gl_Position.xyz,
 						gl_in[10].gl_Position.xyz,
 						gl_in[15].gl_Position.xyz, u, v);*/
-	vec3 dpdu = mix(p[1] - p[0], p[3] - p[2], v);
-	vec3 dpdv = mix(p[2] - p[0], p[3] - p[1], u);
+	//vec3 dpdu = mix(p[1] - p[0], p[3] - p[2], v);
+	//vec3 dpdv = mix(p[2] - p[0], p[3] - p[1], u);
 
 	//norm_eye = normalize(cross(dpdu, dpdv));
 
-	gl_Position = proj_matrix * vec4(pos_eye_te, 1.0f);
+	gl_Position = vec4(pos_eye_te, 1.0f);
+	}
 }
