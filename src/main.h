@@ -140,12 +140,12 @@ void initGL()
 		"shaders/patch_vs.glsl",
 		"shaders/patch_fs.glsl",
 		nullptr,
-		"shaders/patch_tc.glsl",
-		"shaders/patch_te.glsl");
+		"shaders/bezier_patch_tc.glsl",
+		"shaders/bezier_patch_te.glsl");
     gPatch_shader = make_unique<GLSLProgram>(
         "shaders/patch_vs.glsl",
         "shaders/patch_fs.glsl",
-        "shaders/gregory_patch_gs.glsl",
+        nullptr,
         "shaders/gregory_patch_tc.glsl",
         "shaders/gregory_patch_te.glsl");
 

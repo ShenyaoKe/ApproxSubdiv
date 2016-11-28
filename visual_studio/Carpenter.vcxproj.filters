@@ -64,12 +64,6 @@
     <None Include="..\shaders\patch_fs.glsl">
       <Filter>Shaders</Filter>
     </None>
-    <None Include="..\shaders\patch_tc.glsl">
-      <Filter>Shaders</Filter>
-    </None>
-    <None Include="..\shaders\patch_te.glsl">
-      <Filter>Shaders</Filter>
-    </None>
     <None Include="..\shaders\patch_vs.glsl">
       <Filter>Shaders</Filter>
     </None>
@@ -79,10 +73,10 @@
     <None Include="..\shaders\gregory_patch_te.glsl">
       <Filter>Shaders</Filter>
     </None>
-    <None Include="..\shaders\gregory_patch_gs.glsl">
+    <None Include="..\shaders\bezier_patch_tc.glsl">
       <Filter>Shaders</Filter>
     </None>
-    <None Include="..\shaders\gregory_patch_vs.glsl">
+    <None Include="..\shaders\bezier_patch_te.glsl">
       <Filter>Shaders</Filter>
     </None>
   </ItemGroup>

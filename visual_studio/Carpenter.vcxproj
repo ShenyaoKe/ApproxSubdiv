@@ -101,13 +101,11 @@
     <ClCompile Include="..\src\SubdMesh.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\shaders\gregory_patch_gs.glsl" />
     <None Include="..\shaders\gregory_patch_tc.glsl" />
     <None Include="..\shaders\gregory_patch_te.glsl" />
-    <None Include="..\shaders\gregory_patch_vs.glsl" />
     <None Include="..\shaders\patch_fs.glsl" />
-    <None Include="..\shaders\patch_tc.glsl" />
-    <None Include="..\shaders\patch_te.glsl" />
+    <None Include="..\shaders\bezier_patch_tc.glsl" />
+    <None Include="..\shaders\bezier_patch_te.glsl" />
     <None Include="..\shaders\patch_vs.glsl" />
     <None Include="..\shaders\quad_fs.glsl" />
     <None Include="..\shaders\quad_gs.glsl" />

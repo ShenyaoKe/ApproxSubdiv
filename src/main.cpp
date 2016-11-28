@@ -21,7 +21,7 @@ int main()
 		return 1;
 	}
 
-	window = glfwCreateWindow(win_width, win_height, "ApproxSubdiv", nullptr, nullptr);
+	window = glfwCreateWindow(win_width, win_height, "Carpenter", nullptr, nullptr);
 	if (!window) {
 		fprintf(stderr, "ERROR: could not open window with GLFW3\n");
 		glfwTerminate();
