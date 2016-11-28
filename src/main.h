@@ -145,7 +145,7 @@ void initGL()
     gPatch_shader = make_unique<GLSLProgram>(
         "shaders/patch_vs.glsl",
         "shaders/patch_fs.glsl",
-        nullptr,
+        "shaders/gregory_patch_gs.glsl",
         "shaders/gregory_patch_tc.glsl",
         "shaders/gregory_patch_te.glsl");
 

@@ -3,7 +3,7 @@ layout(quads) in;
 
 uniform mat4 proj_matrix;
 
-out vec3 pos_eye, norm_eye;
+out vec3 pos_eye_te;//, norm_eye;
 
 vec3 bilinear_pos(vec3 p0, vec3 p1, vec3 p2, vec3 p3, float s, float t)
 {
@@ -102,7 +102,7 @@ void main()
 	p[2] = bilinear_pos(p[3], p[4], p[7], p[6], u, v);
 	p[3] = bilinear_pos(p[4], p[5], p[8], p[7], u, v);
 
-	pos_eye = bilinear_pos(p[0], p[1], p[3], p[2], u, v);
+	pos_eye_te = bilinear_pos(p[0], p[1], p[3], p[2], u, v);
 	/*pos_eye = bilinear_pos(	gl_in[0].gl_Position.xyz,
 						gl_in[5].gl_Position.xyz,
 						gl_in[10].gl_Position.xyz,
@@ -110,7 +110,7 @@ void main()
 	vec3 dpdu = mix(p[1] - p[0], p[3] - p[2], v);
 	vec3 dpdv = mix(p[2] - p[0], p[3] - p[1], u);
 
-	norm_eye = normalize(cross(dpdu, dpdv));
+	//norm_eye = normalize(cross(dpdu, dpdv));
 
-	gl_Position = proj_matrix * vec4(pos_eye, 1.0f);
+	gl_Position = proj_matrix * vec4(pos_eye_te, 1.0f);
 }
