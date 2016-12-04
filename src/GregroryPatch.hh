@@ -71,7 +71,7 @@ inline GFloat edge_theta(int valence)
 	case 7: return theta_v7;
 	case 8: return theta_v8;
 	case 9: return theta_v9;
-	default: return 0;
+	default: return theta_valence(valence);
 	}
 }
 // Precomputed lambda for calculating edge points
@@ -96,7 +96,7 @@ inline GFloat edge_eigen_val(int valence)
 	case 7: return eigen_v7;
 	case 8: return eigen_v8;
 	case 9: return eigen_v9;
-	default: return 0;
+	default: return lamda_valence(valence);
 	}
 }
 
@@ -148,7 +148,7 @@ inline GFloat cosPi(int num, int den)
 	case 7: return cosPi_7[num];
 	case 8: return cosPi_8[num];
 	case 9: return cosPi_9[num];
-	default: return 1;
+	default: return cos(M_PI * num / den);
 	}
 }
 inline GFloat edgeP_coefMi(int i, int N)
