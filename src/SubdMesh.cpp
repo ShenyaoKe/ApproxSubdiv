@@ -72,6 +72,7 @@ void SubdMesh::getPatch(BufferTrait &bezier_trait,
 void SubdMesh::savePatch() const
 {
 	FILE* fp = fopen("patch.obj", "w");
+    fprintf(fp, "o [BezierPatch]\n");
 	uint32_t bezier_patch_size = bezier_patch.size();
 	for (int i = 0; i < bezier_patch.size(); i++)
 	{
@@ -79,6 +80,7 @@ void SubdMesh::savePatch() const
 	}
 	for (int i = 0; i < bezier_patch.size()/16; i++)
 	{
+        fprintf(fp, "g [BezierPatchID%04d]\n", i);
 		int idx = i * 16 + 1;
 		fprintf(fp, "f %d %d %d %d\n", idx + 0, idx + 1, idx + 5, idx + 4);
 		fprintf(fp, "f %d %d %d %d\n", idx + 1, idx + 2, idx + 6, idx + 5);
@@ -92,22 +94,42 @@ void SubdMesh::savePatch() const
 		fprintf(fp, "f %d %d %d %d\n", idx + 9, idx + 10, idx + 14, idx + 13);
 		fprintf(fp, "f %d %d %d %d\n", idx + 10, idx + 11, idx + 15, idx + 14);
 	}
+
+    fprintf(fp, "o [GregoryPatch]\n");
+
 	for (auto &p : gregory_patch)
 	{
 		fprintf(fp, "v %f %f %f\n", p.x, p.y, p.z);
 	}
 	for (int i = 0; i < gregory_patch.size() / sGregoryPatchSize; i++)
 	{
+        fprintf(fp, "g GregoryPatchID%04d]\n", i);
 		int idx = i * sGregoryPatchSize + 1 + bezier_patch_size;
 		fprintf(fp,
+            // corner
 			"f %d %d %d %d %d\n"
 			"f %d %d %d %d %d\n"
 			"f %d %d %d %d %d\n"
-			"f %d %d %d %d %d\n",
-			idx + 0, idx + 1, idx + 3, idx + 4, idx + 2,
-			idx + 5, idx + 6, idx + 8, idx + 9, idx + 7,
+            "f %d %d %d %d %d\n"
+            // edge fill
+            "f %d %d %d %d\n"
+            "f %d %d %d %d\n"
+            "f %d %d %d %d\n"
+            "f %d %d %d %d\n"
+            // face fill
+            "f %d %d %d %d %d %d %d %d\n",
+			idx + 0,  idx + 1,  idx + 3,  idx + 4,  idx + 2,
+			idx + 5,  idx + 6,  idx + 8,  idx + 9,  idx + 7,
 			idx + 10, idx + 11, idx + 13, idx + 14, idx + 12,
-			idx + 15, idx + 16, idx + 18, idx + 19, idx + 17);
+            idx + 15, idx + 16, idx + 18, idx + 19, idx + 17,
+
+            idx + 1,  idx + 7,  idx + 9,  idx + 3,
+            idx + 6,  idx + 12, idx + 14, idx + 8,
+            idx + 11, idx + 17, idx + 19, idx + 13,
+            idx + 16, idx + 2,  idx + 4,  idx + 18,
+
+            idx + 3,  idx + 9,  idx + 8,  idx + 14,
+            idx + 13, idx + 19, idx + 18, idx + 4);
 	}
 	fclose(fp);
 }

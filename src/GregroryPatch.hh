@@ -99,39 +99,39 @@ inline GFloat edge_eigen_val(int valence)
 	default: return lamda_valence(valence);
 	}
 }
-
+// cosPi_N[i] = cos(Pi * i / N), 0<=i<2N 
 const GFloat cosPi_3[] = { 1, 0.5, -0.5, -1, -0.5, 0.5 };
 const GFloat cosPi_4[] = {
-	1, sqrt(2) * 0.5, 0, -sqrt(2) * 0.5,
-	-1, -sqrt(2) * 0.5, 0, sqrt(2) * 0.5
+	 1,  sqrt(2) * 0.5, 0, -sqrt(2) * 0.5,
+	-1, -sqrt(2) * 0.5, 0,  sqrt(2) * 0.5
 };
 const GFloat cosPi_5[] = {
-	1, cos(M_PI*0.2), cos(M_PI*0.4), cos(M_PI*0.6), cos(M_PI*0.8),
+	 1, cos(M_PI*0.2), cos(M_PI*0.4), cos(M_PI*0.6), cos(M_PI*0.8),
 	-1, cos(M_PI*1.2), cos(M_PI*1.4), cos(M_PI*1.6), cos(M_PI*1.8)
 };
 const GFloat cosPi_6[] = {
-	1, sqrt(3) * 0.5, 0.5, 0, -0.5, -sqrt(3) * 0.5,
-	-1, -sqrt(3) * 0.5, -0.5, 0, 0.5, sqrt(3) * 0.5
+	 1,  sqrt(3) * 0.5,  0.5, 0, -0.5, -sqrt(3) * 0.5,
+	-1, -sqrt(3) * 0.5, -0.5, 0,  0.5,  sqrt(3) * 0.5
 };
 const GFloat cosPi_7[] = {
-	1, cos(M_PI / 7.0), cos(M_PI * 2 / 7.0), cos(M_PI * 3 / 7.0),
-	cos(M_PI * 4 / 7.0), cos(M_PI * 5 / 7.0), cos(M_PI * 6 / 7.0),
+	 1, cos(M_PI / 7.0),     cos(M_PI * 2 / 7.0), cos(M_PI * 3 / 7.0),
+	    cos(M_PI * 4 / 7.0), cos(M_PI * 5 / 7.0), cos(M_PI * 6 / 7.0),
 	-1, cos(M_PI * 6 / 7.0), cos(M_PI * 5 / 7.0), cos(M_PI * 4 / 7.0),
-	cos(M_PI * 3 / 7.0), cos(M_PI * 2 / 7.0), cos(M_PI / 7.0),
+	    cos(M_PI * 3 / 7.0), cos(M_PI * 2 / 7.0), cos(M_PI / 7.0)
 };
 const GFloat cosPi_8[] = {
-	1, cos(M_PI * 0.125), sqr(2) * 0.5, cos(M_PI * 0.375), 0,//0-4
-	-cos(M_PI * 0.125), -sqr(2) * 0.5, -cos(M_PI * 0.375), //5-7
-	-1, -cos(M_PI * 0.375), -sqr(2) * 0.5, -cos(M_PI * 0.125),//8-11
-	0, cos(M_PI * 0.375), sqr(2) * 0.5, cos(M_PI * 0.125),//12-15
+	 1,  cos(M_PI * 0.125),  sqrt(2) * 0.5,  cos(M_PI * 0.375), // 0-3
+     0, -cos(M_PI * 0.375), -sqrt(2) * 0.5, -cos(M_PI * 0.125), //4-7
+	-1, -cos(M_PI * 0.125), -sqrt(2) * 0.5, -cos(M_PI * 0.375),//8-11
+	 0,  cos(M_PI * 0.375),  sqrt(2) * 0.5,  cos(M_PI * 0.125),//12-15
 };
 const GFloat cosPi_9[] = {
-	1, cos(M_PI / 9.0), cos(M_PI * 2 / 9.0),
-	0.5, cos(M_PI * 4 / 9.0), cos(M_PI * 5 / 9.0),
+	   1, cos(M_PI / 9.0),     cos(M_PI * 2 / 9.0),
+	 0.5, cos(M_PI * 4 / 9.0), cos(M_PI * 5 / 9.0),
 	-0.5, cos(M_PI * 7 / 9.0), cos(M_PI * 8 / 9.0),
-	-1, cos(M_PI * 8 / 90), cos(M_PI * 7 / 9.0),
+	  -1, cos(M_PI * 8 / 90),  cos(M_PI * 7 / 9.0),
 	-0.5, cos(M_PI * 5 / 9.0), cos(M_PI * 4 / 9.0),
-	0.5, cos(M_PI * 2 / 9.0), cos(M_PI / 9.0)
+	 0.5, cos(M_PI * 2 / 9.0), cos(M_PI / 9.0)
 };
 // read in numerator, denominator to return value
 inline GFloat cosPi(int num, int den)

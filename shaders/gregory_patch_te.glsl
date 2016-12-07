@@ -28,21 +28,21 @@ void main()
 {
 	float u = gl_TessCoord.x;// (n_layer - 1) * t;
 	float v = gl_TessCoord.y;
-	/*if ((u == 0 || u == 1) && (v == 0 || v == 1))
+	if ((u == 0 || u == 1) && (v == 0 || v == 1))
 	{
-		pos_eye = bilinear_pos(
-									gl_in[ 0].gl_Position.xyz,
-									gl_in[ 5].gl_Position.xyz,
-									gl_in[10].gl_Position.xyz,
-									gl_in[15].gl_Position.xyz,
-									u, v
-									);
+		int idx = u == 0 ? (v == 0 ? 0 : 15)
+						 : (v == 0 ? 5 : 10);
+		pos_eye = gl_in[idx].gl_Position.xyz;
+        vec4 dpdu = gl_in[idx+1].gl_Position - gl_in[idx].gl_Position;
+		vec4 dpdv = gl_in[idx+2].gl_Position - gl_in[idx].gl_Position;
+		norm_eye = normalize(cross(dpdu.xyz, dpdv.xyz));
 		gl_Position = proj_matrix * vec4(pos_eye, 1.0f);
-	}*/
-	if (u == 0 && v == 0)
+	}
+	/*if (u == 0 && v == 0)
 	{
+		i = 0
 		pos_eye = gl_in[ 0].gl_Position.xyz;
-		vec4 dpdu = gl_in[ 3].gl_Position - gl_in[ 0].gl_Position;
+		vec4 dpdu = gl_in[ 1].gl_Position - gl_in[ 0].gl_Position;
 		vec4 dpdv = gl_in[ 2].gl_Position - gl_in[ 0].gl_Position;
 		norm_eye = normalize(cross(dpdu.xyz, dpdv.xyz));
 		gl_Position = proj_matrix * gl_in[0].gl_Position;
@@ -70,7 +70,7 @@ void main()
 		vec4 dpdv = gl_in[17].gl_Position - gl_in[15].gl_Position;
 		norm_eye = normalize(cross(dpdu.xyz, dpdv.xyz));
 		gl_Position = proj_matrix * gl_in[15].gl_Position;
-	}
+	}*/
 	else
 	{
 		// Sample on grid
@@ -149,8 +149,8 @@ void main()
 
 		pos_eye = bilinear_pos(p[0], p[1], p[3], p[2], u, v);
 
-		vec3 dpdu = mix(p[1] - p[0], p[3] - p[2], v);
-		vec3 dpdv = mix(p[2] - p[0], p[3] - p[1], u);
+		vec3 dpdu = 2 * mix(p[1] - p[0], p[3] - p[2], v);
+		vec3 dpdv = 2 * mix(p[2] - p[0], p[3] - p[1], u);
 		norm_eye = normalize(cross(dpdu, dpdv));
 
 		gl_Position = proj_matrix * vec4(pos_eye, 1.0f);

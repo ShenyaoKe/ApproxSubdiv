@@ -90,8 +90,8 @@ void main()
 
 	pos_eye = bilinear(p[0], p[1], p[3], p[2], u, v);
 	
-	vec3 dpdu = mix(p[1] - p[0], p[3] - p[2], v);
-	vec3 dpdv = mix(p[2] - p[0], p[3] - p[1], u);
+	vec3 dpdu = 2 * mix(p[1] - p[0], p[3] - p[2], v);
+	vec3 dpdv = 2 * mix(p[2] - p[0], p[3] - p[1], u);
 #endif
 	
 
