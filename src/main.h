@@ -212,7 +212,7 @@ void window_refresh_callback(GLFWwindow* window)
 	glfwSwapBuffers(window);
 }
 
-void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
+void key_callback(GLFWwindow* /*window*/, int key, int /*scancode*/, int action, int /*mods*/)
 {
 	if (key == GLFW_KEY_F && action == GLFW_PRESS)
 	{
@@ -258,7 +258,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 	view_changed = true;
 }
 
-void window_resize_callback(GLFWwindow* window, int width, int height)
+void window_resize_callback(GLFWwindow* /*window*/, int width, int height)
 {
 	win_width = width;
 	win_height = height;
@@ -268,7 +268,7 @@ void window_resize_callback(GLFWwindow* window, int width, int height)
 	view_changed = true;
 }
 
-void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
+void mouse_button_callback(GLFWwindow* window, int button, int action, int /*mods*/)
 {
 	if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS)
 	{
@@ -300,7 +300,7 @@ void cursor_enter_callback(GLFWwindow* window, int entered)
 	}
 }
 
-void cursor_position_callback(GLFWwindow* window, double xpos, double ypos)
+void cursor_position_callback(GLFWwindow* /*window*/, double xpos, double ypos)
 {
 	double dx = xpos - cursor_last_x;
 	double dy = ypos - cursor_last_y;
@@ -327,7 +327,7 @@ void cursor_position_callback(GLFWwindow* window, double xpos, double ypos)
 
 }
 
-void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
+void scroll_callback(GLFWwindow* /*window*/, double /*xoffset*/, double yoffset)
 {
 	view_cam->zoom(0, 0, yoffset);
 
