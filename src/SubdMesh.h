@@ -5,11 +5,11 @@
 
 struct BufferTrait
 {
-    const void* data    = nullptr;
-    uint32_t    count   = 0;
-    uint32_t    size    = 0;
-    uint32_t    offset  = 0;
-    uint32_t    stride  = 0;
+	const void* data = nullptr;
+	uint32_t    count = 0;
+	uint32_t    size = 0;
+	uint32_t    offset = 0;
+	uint32_t    stride = 0;
 };
 
 struct BezierPatch
@@ -30,22 +30,17 @@ public:
 		vector<unsigned int>* idx_array = nullptr) const;
 
 	void getPatch(BufferTrait &trait) const;
-	void getPatch(BufferTrait &bezier_trait,
-					BufferTrait &gregory_trait) const;
+	void getPatch(BufferTrait &bezier_trait, BufferTrait &gregory_trait) const;
 	void savePatch() const;
 private:
 	Point3f faceCenter(uint32_t fid) const;
 	Point3f edgeCenter(uint32_t heid) const;
 
 	void initPatch();
-	void genBezierPatch(
-		const vector<bool> &bad_face_hash
-	);
-	void genGregoryPatch(
-		vector<uint32_t> &vValenceCount,
-		vector<uint32_t> &irreg_faces
-	);
-    void evalGregory() const;
+	void genBezierPatch(const vector<bool> &bad_face_hash);
+	void genGregoryPatch(vector<uint32_t> &vValenceCount, vector<uint32_t> &irreg_faces);
+
+	void evalGregory() const;
 
 private:
 	static const uint32_t sBezierPatchSize = 16;

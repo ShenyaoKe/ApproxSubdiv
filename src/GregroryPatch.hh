@@ -121,7 +121,7 @@ const GFloat cosPi_7[] = {
 };
 const GFloat cosPi_8[] = {
 	 1,  cos(M_PI * 0.125),  sqrt(2) * 0.5,  cos(M_PI * 0.375), // 0-3
-     0, -cos(M_PI * 0.375), -sqrt(2) * 0.5, -cos(M_PI * 0.125), //4-7
+	 0, -cos(M_PI * 0.375), -sqrt(2) * 0.5, -cos(M_PI * 0.125), //4-7
 	-1, -cos(M_PI * 0.125), -sqrt(2) * 0.5, -cos(M_PI * 0.375),//8-11
 	 0,  cos(M_PI * 0.375),  sqrt(2) * 0.5,  cos(M_PI * 0.125),//12-15
 };

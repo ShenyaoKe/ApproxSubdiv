@@ -9,7 +9,7 @@ SubdMesh::SubdMesh(const char* filename)
 		mHDSMesh.reset(buildHalfEdgeMesh(verts, fids));
 		initPatch();
 		//savePatch();
-        evalGregory();
+		evalGregory();
 	}
 }
 
@@ -72,7 +72,7 @@ void SubdMesh::getPatch(BufferTrait &bezier_trait,
 void SubdMesh::savePatch() const
 {
 	FILE* fp = fopen("patch.obj", "w");
-    fprintf(fp, "o [BezierPatch]\n");
+	fprintf(fp, "o [BezierPatch]\n");
 	uint32_t bezier_patch_size = bezier_patch.size();
 	for (int i = 0; i < bezier_patch.size(); i++)
 	{
@@ -80,7 +80,7 @@ void SubdMesh::savePatch() const
 	}
 	for (int i = 0; i < bezier_patch.size()/16; i++)
 	{
-        fprintf(fp, "g [BezierPatchID%04d]\n", i);
+		fprintf(fp, "g [BezierPatchID%04d]\n", i);
 		int idx = i * 16 + 1;
 		fprintf(fp, "f %d %d %d %d\n", idx + 0, idx + 1, idx + 5, idx + 4);
 		fprintf(fp, "f %d %d %d %d\n", idx + 1, idx + 2, idx + 6, idx + 5);
@@ -95,7 +95,7 @@ void SubdMesh::savePatch() const
 		fprintf(fp, "f %d %d %d %d\n", idx + 10, idx + 11, idx + 15, idx + 14);
 	}
 
-    fprintf(fp, "o [GregoryPatch]\n");
+	fprintf(fp, "o [GregoryPatch]\n");
 
 	for (auto &p : gregory_patch)
 	{
@@ -103,33 +103,33 @@ void SubdMesh::savePatch() const
 	}
 	for (int i = 0; i < gregory_patch.size() / sGregoryPatchSize; i++)
 	{
-        fprintf(fp, "g GregoryPatchID%04d]\n", i);
+		fprintf(fp, "g GregoryPatchID%04d]\n", i);
 		int idx = i * sGregoryPatchSize + 1 + bezier_patch_size;
 		fprintf(fp,
-            // corner
-			"f %d %d %d %d %d\n"
-			"f %d %d %d %d %d\n"
-			"f %d %d %d %d %d\n"
-            "f %d %d %d %d %d\n"
-            // edge fill
-            "f %d %d %d %d\n"
-            "f %d %d %d %d\n"
-            "f %d %d %d %d\n"
-            "f %d %d %d %d\n"
-            // face fill
-            "f %d %d %d %d %d %d %d %d\n",
-			idx + 0,  idx + 1,  idx + 3,  idx + 4,  idx + 2,
-			idx + 5,  idx + 6,  idx + 8,  idx + 9,  idx + 7,
-			idx + 10, idx + 11, idx + 13, idx + 14, idx + 12,
-            idx + 15, idx + 16, idx + 18, idx + 19, idx + 17,
+				// corner
+				"f %d %d %d %d %d\n"
+				"f %d %d %d %d %d\n"
+				"f %d %d %d %d %d\n"
+				"f %d %d %d %d %d\n"
+				// edge fill
+				"f %d %d %d %d\n"
+				"f %d %d %d %d\n"
+				"f %d %d %d %d\n"
+				"f %d %d %d %d\n"
+				// face fill
+				"f %d %d %d %d %d %d %d %d\n",
+				idx + 0,  idx + 1,  idx + 3,  idx + 4,  idx + 2,
+				idx + 5,  idx + 6,  idx + 8,  idx + 9,  idx + 7,
+				idx + 10, idx + 11, idx + 13, idx + 14, idx + 12,
+				idx + 15, idx + 16, idx + 18, idx + 19, idx + 17,
 
-            idx + 1,  idx + 7,  idx + 9,  idx + 3,
-            idx + 6,  idx + 12, idx + 14, idx + 8,
-            idx + 11, idx + 17, idx + 19, idx + 13,
-            idx + 16, idx + 2,  idx + 4,  idx + 18,
+				idx + 1,  idx + 7,  idx + 9,  idx + 3,
+				idx + 6,  idx + 12, idx + 14, idx + 8,
+				idx + 11, idx + 17, idx + 19, idx + 13,
+				idx + 16, idx + 2,  idx + 4,  idx + 18,
 
-            idx + 3,  idx + 9,  idx + 8,  idx + 14,
-            idx + 13, idx + 19, idx + 18, idx + 4);
+				idx + 3,  idx + 9,  idx + 8,  idx + 14,
+				idx + 13, idx + 19, idx + 18, idx + 4);
 	}
 	fclose(fp);
 }
@@ -483,143 +483,143 @@ void SubdMesh::genGregoryPatch(
 	gregory_patch.shrink_to_fit();
 }
 
-Point3f bilinear_pos(const Point3f &p0, const Point3f &p1,
-                     const Point3f &p2, const Point3f &p3,
-                     float s, float t)
+Point3f bilinear_pos(
+	const Point3f &p0, const Point3f &p1,
+	const Point3f &p2, const Point3f &p3,
+	float s, float t)
 {
-    // id3 -- id2
-    //  |      |
-    // id0 -- id1
-    return lerp(lerp(p0, p1, s), lerp(p3, p2, s), t);
+	// id3 -- id2
+	//  |      |
+	// id0 -- id1
+	return lerp(lerp(p0, p1, s), lerp(p3, p2, s), t);
 }
 
 void SubdMesh::evalGregory() const
 {
-    const int tessSize = 5;
-    float us[tessSize];// = { 0, 0.5f, 1.0f };
-    float vs[tessSize];// = { 0, 0.5f, 1.0f };
-    for (int i = 1; i < tessSize - 1 ; i++)
-    {
-        us[i] = vs[i] = float(i) / float(tessSize);
-    }
-    us[0] = vs[0] = 0.0f;
-    us[tessSize - 1] = vs[tessSize - 1] = 1.0f;
+	const int tessSize = 5;
+	float us[tessSize];// = { 0, 0.5f, 1.0f };
+	float vs[tessSize];// = { 0, 0.5f, 1.0f };
+	for (int i = 1; i < tessSize - 1; i++)
+	{
+		us[i] = vs[i] = float(i) / float(tessSize);
+	}
+	us[0] = vs[0] = 0.0f;
+	us[tessSize - 1] = vs[tessSize - 1] = 1.0f;
 
-    vector<Point3f> ret;
-    for (int ui = 0; ui < tessSize; ui++)
-    {
-        float u = us[ui];
-        for (int vi = 0; vi < tessSize; vi++)
-        {
-            float v = vs[vi];
+	vector<Point3f> ret;
+	for (int ui = 0; ui < tessSize; ui++)
+	{
+		float u = us[ui];
+		for (int vi = 0; vi < tessSize; vi++)
+		{
+			float v = vs[vi];
 
-            if ((u == 0 || u == 1) && (v == 0 || v == 1))
-            {
-                ret.push_back(bilinear_pos(
-                    gregory_patch[0],
-                    gregory_patch[5],
-                    gregory_patch[10],
-                    gregory_patch[15],
-                    u, v
-                ));
-            }
-            else
-            {
-                // Sample on grid
-                // Face Points
-                Point3f f0 = (u * gregory_patch[3]
-                    + v * gregory_patch[4])
-                    / (u + v);
-                Point3f f1 = ((1 - u) * gregory_patch[9]
-                    + v  * gregory_patch[8])
-                    / (1 - u + v);
-                Point3f f2 = ((1 - u) * gregory_patch[13]
-                    + (1 - v) * gregory_patch[14])
-                    / (2 - u - v);
-                Point3f f3 = (u * gregory_patch[19]
-                    + (1 - v) * gregory_patch[18])
-                    / (1 + u - v);
+			if ((u == 0 || u == 1) && (v == 0 || v == 1))
+			{
+				ret.push_back(bilinear_pos(
+					gregory_patch[0],
+					gregory_patch[5],
+					gregory_patch[10],
+					gregory_patch[15],
+					u, v
+				));
+			}
+			else
+			{
+				// Sample on grid
+				// Face Points
+				Point3f f0 = (u * gregory_patch[3]
+							  + v * gregory_patch[4])
+					/ (u + v);
+				Point3f f1 = ((1 - u) * gregory_patch[9]
+							  + v  * gregory_patch[8])
+					/ (1 - u + v);
+				Point3f f2 = ((1 - u) * gregory_patch[13]
+							  + (1 - v) * gregory_patch[14])
+					/ (2 - u - v);
+				Point3f f3 = (u * gregory_patch[19]
+							  + (1 - v) * gregory_patch[18])
+					/ (1 + u - v);
 
-                Point3f p[9];
-                // 6 -- 7 -- 8
-                // |    |    |
-                // 3 -- 4 -- 5
-                // |    |    |
-                // 0 -- 1 -- 2
-                p[0] = bilinear_pos(gregory_patch[0],
-                    gregory_patch[1],
-                    f0,
-                    gregory_patch[2],
-                    u, v);
-                p[1] = bilinear_pos(gregory_patch[1],
-                    gregory_patch[7],
-                    f1,
-                    f0,
-                    u, v);
-                p[2] = bilinear_pos(gregory_patch[7],
-                    gregory_patch[5],
-                    gregory_patch[6],
-                    f1,
-                    u, v);
+				Point3f p[9];
+				// 6 -- 7 -- 8
+				// |    |    |
+				// 3 -- 4 -- 5
+				// |    |    |
+				// 0 -- 1 -- 2
+				p[0] = bilinear_pos(gregory_patch[0],
+									gregory_patch[1],
+									f0,
+									gregory_patch[2],
+									u, v);
+				p[1] = bilinear_pos(gregory_patch[1],
+									gregory_patch[7],
+									f1,
+									f0,
+									u, v);
+				p[2] = bilinear_pos(gregory_patch[7],
+									gregory_patch[5],
+									gregory_patch[6],
+									f1,
+									u, v);
 
-                p[3] = bilinear_pos(gregory_patch[2],
-                    f0,
-                    f3,
-                    gregory_patch[16],
-                    u, v);
-                p[4] = bilinear_pos(f0, f1, f2, f3,
-                    u, v);
-                p[5] = bilinear_pos(f1,
-                    gregory_patch[6],
-                    gregory_patch[12],
-                    f2,
-                    u, v);
+				p[3] = bilinear_pos(gregory_patch[2],
+									f0,
+									f3,
+									gregory_patch[16],
+									u, v);
+				p[4] = bilinear_pos(f0, f1, f2, f3,
+									u, v);
+				p[5] = bilinear_pos(f1,
+									gregory_patch[6],
+									gregory_patch[12],
+									f2,
+									u, v);
 
-                p[6] = bilinear_pos(gregory_patch[16],
-                    f3,
-                    gregory_patch[17],
-                    gregory_patch[15],
-                    u, v);
-                p[7] = bilinear_pos(f3,
-                    f2,
-                    gregory_patch[11],
-                    gregory_patch[17],
-                    u, v);
-                p[8] = bilinear_pos(f2,
-                    gregory_patch[12],
-                    gregory_patch[10],
-                    gregory_patch[11],
-                    u, v);
+				p[6] = bilinear_pos(gregory_patch[16],
+									f3,
+									gregory_patch[17],
+									gregory_patch[15],
+									u, v);
+				p[7] = bilinear_pos(f3,
+									f2,
+									gregory_patch[11],
+									gregory_patch[17],
+									u, v);
+				p[8] = bilinear_pos(f2,
+									gregory_patch[12],
+									gregory_patch[10],
+									gregory_patch[11],
+									u, v);
 
-                // 2 -- 3
-                // |    |
-                // 0 -- 1
-                p[0] = bilinear_pos(p[0], p[1], p[4], p[3], u, v);
-                p[1] = bilinear_pos(p[1], p[2], p[5], p[4], u, v);
-                p[2] = bilinear_pos(p[3], p[4], p[7], p[6], u, v);
-                p[3] = bilinear_pos(p[4], p[5], p[8], p[7], u, v);
+				// 2 -- 3
+				// |    |
+				// 0 -- 1
+				p[0] = bilinear_pos(p[0], p[1], p[4], p[3], u, v);
+				p[1] = bilinear_pos(p[1], p[2], p[5], p[4], u, v);
+				p[2] = bilinear_pos(p[3], p[4], p[7], p[6], u, v);
+				p[3] = bilinear_pos(p[4], p[5], p[8], p[7], u, v);
 
-                ret.push_back(bilinear_pos(p[0], p[1], p[3], p[2], u, v));
-            }
-        }
-    }
-    FILE* fp = fopen("patch_eval.obj", "w");
-    for (auto &p : ret)
-    {
-        fprintf(fp, "v %f %f %f\n", p.x, p.y, p.z);
-    }
-    for (int i = 0; i < tessSize - 1; i++)
-    {
-    	for (int j = 0; j < tessSize - 1; j++)
-    	{
-            int x = i * tessSize + 1 + j;
-            int y = x + tessSize;
-            fprintf(fp,
-                "f %d %d %d %d\n",
-                x, y , y + 1, x + 1);
-    	}
-    }
-    
-    fclose(fp);
-    
+				ret.push_back(bilinear_pos(p[0], p[1], p[3], p[2], u, v));
+			}
+		}
+	}
+	FILE* fp = fopen("patch_eval.obj", "w");
+	for (auto &p : ret)
+	{
+		fprintf(fp, "v %f %f %f\n", p.x, p.y, p.z);
+	}
+	for (int i = 0; i < tessSize - 1; i++)
+	{
+		for (int j = 0; j < tessSize - 1; j++)
+		{
+			int x = i * tessSize + 1 + j;
+			int y = x + tessSize;
+			fprintf(fp,
+					"f %d %d %d %d\n",
+					x, y, y + 1, x + 1);
+		}
+	}
+
+	fclose(fp);
 }

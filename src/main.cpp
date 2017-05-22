@@ -12,7 +12,6 @@ int main()
 #endif // _DEBUG
 	model_mesh = new SubdMesh(filename.c_str());
 
-
 	GLFWwindow* window = nullptr;
 
 	/* start GL context and O/S window using the GLFW helper library */
@@ -22,7 +21,8 @@ int main()
 	}
 
 	window = glfwCreateWindow(win_width, win_height, "Carpenter", nullptr, nullptr);
-	if (!window) {
+	if (!window)
+	{
 		fprintf(stderr, "ERROR: could not open window with GLFW3\n");
 		glfwTerminate();
 		return 1;

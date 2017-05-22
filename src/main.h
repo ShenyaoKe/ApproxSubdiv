@@ -46,11 +46,17 @@ void bindMesh()
 	glDeleteVertexArrays(1, &model_vao);
 
 	glCreateBuffers(1, &model_vert_vbo);
-	glNamedBufferData(model_vert_vbo, sizeof(GLfloat) * model_verts.size(), &model_verts[0], GL_STATIC_DRAW);
+	glNamedBufferData(model_vert_vbo,
+					  sizeof(GLfloat) * model_verts.size(),
+					  &model_verts[0],
+					  GL_STATIC_DRAW);
 
 	// IBO
 	glCreateBuffers(1, &model_ibo);
-	glNamedBufferData(model_ibo, sizeof(GLuint) * model_idx.size(), &model_idx[0], GL_STATIC_DRAW);
+	glNamedBufferData(model_ibo,
+					  sizeof(GLuint) * model_idx.size(),
+					  &model_idx[0],
+					  GL_STATIC_DRAW);
 
 	// VAO
 	glCreateVertexArrays(1, &model_vao);
@@ -58,7 +64,9 @@ void bindMesh()
 
 	// Setup the formats
 	glVertexArrayAttribFormat(model_vao, 0, 3, GL_FLOAT, GL_FALSE, 0);
-	glVertexArrayVertexBuffer(model_vao, 0, model_vert_vbo, 0, sizeof(GLfloat) * 3);
+	glVertexArrayVertexBuffer(model_vao, 0,
+							  model_vert_vbo, 0,
+							  sizeof(GLfloat) * 3);
 	glVertexArrayAttribBinding(model_vao, 0, 0);
 
 	glVertexArrayElementBuffer(model_vao, model_ibo);
@@ -71,12 +79,10 @@ void bindBezierPatch()
 	glDeleteVertexArrays(1, &bPatch_vao);
 
 	glCreateBuffers(1, &bPatch_vert_vbo);
-	glNamedBufferData(
-		bPatch_vert_vbo,
-		bezier_patch_trait.size,
-		bezier_patch_trait.data,
-		GL_STATIC_DRAW
-	);
+	glNamedBufferData(bPatch_vert_vbo,
+					  bezier_patch_trait.size,
+					  bezier_patch_trait.data,
+					  GL_STATIC_DRAW);
 
 	// VAO
 	glCreateVertexArrays(1, &bPatch_vao);
@@ -84,76 +90,68 @@ void bindBezierPatch()
 
 	// Setup the formats
 	glVertexArrayAttribFormat(bPatch_vao, 0, 3, GL_FLOAT, GL_FALSE, 0);
-	glVertexArrayVertexBuffer(
-		bPatch_vao,
-		0,
-		bPatch_vert_vbo,
-		bezier_patch_trait.offset,
-		bezier_patch_trait.stride
-	);
+	glVertexArrayVertexBuffer(bPatch_vao, 0,
+							  bPatch_vert_vbo,
+							  bezier_patch_trait.offset,
+							  bezier_patch_trait.stride);
 	glVertexArrayAttribBinding(bPatch_vao, 0, 0);
 }
 
 void bindGregoryPatch()
 {
-    glDeleteBuffers(1, &gPatch_vert_vbo);
-    glDeleteVertexArrays(1, &gPatch_vao);
+	glDeleteBuffers(1, &gPatch_vert_vbo);
+	glDeleteVertexArrays(1, &gPatch_vao);
 
-    glCreateBuffers(1, &gPatch_vert_vbo);
-    glNamedBufferData(
-        gPatch_vert_vbo,
-        gregory_patch_trait.size,
-        gregory_patch_trait.data,
-        GL_STATIC_DRAW
-    );
+	glCreateBuffers(1, &gPatch_vert_vbo);
+	glNamedBufferData(gPatch_vert_vbo,
+					  gregory_patch_trait.size,
+					  gregory_patch_trait.data,
+					  GL_STATIC_DRAW);
 
-    // VAO
-    glCreateVertexArrays(1, &gPatch_vao);
-    glEnableVertexArrayAttrib(gPatch_vao, 0);
+	// VAO
+	glCreateVertexArrays(1, &gPatch_vao);
+	glEnableVertexArrayAttrib(gPatch_vao, 0);
 
-    // Setup the formats
-    glVertexArrayAttribFormat(gPatch_vao, 0, 3, GL_FLOAT, GL_FALSE, 0);
-    glVertexArrayVertexBuffer(
-        gPatch_vao,
-        0,
-        gPatch_vert_vbo,
-        gregory_patch_trait.offset,
-        gregory_patch_trait.stride
-    );
-    glVertexArrayAttribBinding(gPatch_vao, 0, 0);
+	// Setup the formats
+	glVertexArrayAttribFormat(gPatch_vao, 0, 3, GL_FLOAT, GL_FALSE, 0);
+	glVertexArrayVertexBuffer(gPatch_vao,
+							  0,
+							  gPatch_vert_vbo,
+							  gregory_patch_trait.offset,
+							  gregory_patch_trait.stride);
+	glVertexArrayAttribBinding(gPatch_vao, 0, 0);
 }
 
 void initGL()
 {
-	renderer = glGetString(GL_RENDERER); /* get renderer string */
-	version = glGetString(GL_VERSION); /* version as a string */
+	// get renderer and version as string
+	renderer = glGetString(GL_RENDERER);
+	version = glGetString(GL_VERSION);
 	printf("Renderer: %s\n", renderer);
 	printf("OpenGL version supported %s\n", version);
 
 	glewExperimental = GL_TRUE;
 	glewInit();
 
-	/* geometry to use. these are 3 xyz points (9 floats total) to make a triangle */
-	model_shader = make_unique<GLSLProgram>(
-		"shaders/quad_vs.glsl", "shaders/quad_fs.glsl", "shaders/quad_gs.glsl");
-	bPatch_shader = make_unique<GLSLProgram>(
-		"shaders/patch_vs.glsl",
-		"shaders/patch_fs.glsl",
-		nullptr,
-		"shaders/bezier_patch_tc.glsl",
-		"shaders/bezier_patch_te.glsl");
-    gPatch_shader = make_unique<GLSLProgram>(
-        "shaders/patch_vs.glsl",
-        "shaders/patch_fs.glsl",
-        nullptr,
-        "shaders/gregory_patch_tc.glsl",
-        "shaders/gregory_patch_te.glsl");
+	model_shader = make_unique<GLSLProgram>("shaders/quad_vs.glsl",
+											"shaders/quad_fs.glsl",
+											"shaders/quad_gs.glsl");
+	bPatch_shader = make_unique<GLSLProgram>("shaders/patch_vs.glsl",
+											 "shaders/patch_fs.glsl",
+											 nullptr,
+											 "shaders/bezier_patch_tc.glsl",
+											 "shaders/bezier_patch_te.glsl");
+	gPatch_shader = make_unique<GLSLProgram>("shaders/patch_vs.glsl",
+											 "shaders/patch_fs.glsl",
+											 nullptr,
+											 "shaders/gregory_patch_tc.glsl",
+											 "shaders/gregory_patch_te.glsl");
 
 	model_mesh->exportIndexedVBO(&model_verts, nullptr, nullptr, &model_idx);
 	bindMesh();
 	model_mesh->getPatch(bezier_patch_trait, gregory_patch_trait);
 	bindBezierPatch();
-    bindGregoryPatch();
+	bindGregoryPatch();
 
 	glEnable(GL_BLEND);
 	glEnable(GL_DEPTH_TEST); // enable depth-testing
@@ -166,8 +164,8 @@ void initGL()
 void window_refresh_callback(GLFWwindow* window)
 {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    glEnable(GL_CULL_FACE);
-    glCullFace(GL_BACK); // cull back face
+	glEnable(GL_CULL_FACE);
+	glCullFace(GL_BACK); // cull back face
 	if (!draw_wireframe)
 	{
 		//glEnable(GL_CULL_FACE);
@@ -178,12 +176,14 @@ void window_refresh_callback(GLFWwindow* window)
 	{
 		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 	}
-    
+
 	// Draw Bezier Patches
 	glBindVertexArray(bPatch_vao);
 	bPatch_shader->use_program();
-	glUniformMatrix4fv((*bPatch_shader)["view_matrix"], 1, GL_FALSE, view_cam->world_to_cam());
-	glUniformMatrix4fv((*bPatch_shader)["proj_matrix"], 1, GL_FALSE, view_cam->cam_to_screen());
+	glUniformMatrix4fv((*bPatch_shader)["view_matrix"], 1, GL_FALSE,
+					   view_cam->world_to_cam());
+	glUniformMatrix4fv((*bPatch_shader)["proj_matrix"], 1, GL_FALSE,
+					   view_cam->cam_to_screen());
 	glUniform1f((*bPatch_shader)["segments"], tess_seg);
 	glPatchParameteri(GL_PATCH_VERTICES, 16);
 	glDrawArrays(GL_PATCHES, 0, bezier_patch_trait.count);
@@ -195,19 +195,23 @@ void window_refresh_callback(GLFWwindow* window)
 		glBindVertexArray(model_vao);
 		model_shader->use_program();
 		// Draw something
-		glUniformMatrix4fv((*model_shader)["view_matrix"], 1, GL_FALSE, view_cam->world_to_cam());
-		glUniformMatrix4fv((*model_shader)["proj_matrix"], 1, GL_FALSE, view_cam->cam_to_screen());
+		glUniformMatrix4fv((*model_shader)["view_matrix"], 1, GL_FALSE,
+						   view_cam->world_to_cam());
+		glUniformMatrix4fv((*model_shader)["proj_matrix"], 1, GL_FALSE,
+						   view_cam->cam_to_screen());
 		glDrawElements(GL_LINES_ADJACENCY, model_idx.size(), GL_UNSIGNED_INT, 0);
 	}
-    
-    // Draw Gregory Patches
-    glBindVertexArray(gPatch_vao);
-    gPatch_shader->use_program();
-    glUniformMatrix4fv((*gPatch_shader)["view_matrix"], 1, GL_FALSE, view_cam->world_to_cam());
-    glUniformMatrix4fv((*gPatch_shader)["proj_matrix"], 1, GL_FALSE, view_cam->cam_to_screen());
-    glUniform1f((*gPatch_shader)["segments"], tess_seg);
-    glPatchParameteri(GL_PATCH_VERTICES, 20);
-    glDrawArrays(GL_PATCHES, 0, gregory_patch_trait.count);
+
+	// Draw Gregory Patches
+	glBindVertexArray(gPatch_vao);
+	gPatch_shader->use_program();
+	glUniformMatrix4fv((*gPatch_shader)["view_matrix"], 1, GL_FALSE,
+					   view_cam->world_to_cam());
+	glUniformMatrix4fv((*gPatch_shader)["proj_matrix"], 1, GL_FALSE,
+					   view_cam->cam_to_screen());
+	glUniform1f((*gPatch_shader)["segments"], tess_seg);
+	glPatchParameteri(GL_PATCH_VERTICES, 20);
+	glDrawArrays(GL_PATCHES, 0, gregory_patch_trait.count);
 
 	glfwSwapBuffers(window);
 }
@@ -216,9 +220,10 @@ void key_callback(GLFWwindow* /*window*/, int key, int /*scancode*/, int action,
 {
 	if (key == GLFW_KEY_F && action == GLFW_PRESS)
 	{
-		view_cam.reset(new perspCamera(
-			Point3f(10, 6, 10), Point3f(0, 0, 0), Vector3f(0, 1, 0),
-			win_width / static_cast<Float>(win_height)));
+		view_cam.reset(new perspCamera(Point3f(10, 6, 10),
+									   Point3f(0, 0, 0),
+									   Vector3f(0, 1, 0),
+									   win_width / static_cast<Float>(win_height)));
 	}
 	if (key == GLFW_KEY_W && action == GLFW_PRESS)
 	{
@@ -313,13 +318,13 @@ void cursor_position_callback(GLFWwindow* /*window*/, double xpos, double ypos)
 	}
 	/*if (zoom_camera && dx != cursor_last_x)// zooming
 	{
-		view_cam->zoom(0.0, 0.0, dx * 0.05);
+	view_cam->zoom(0.0, 0.0, dx * 0.05);
 
-		view_changed = true;
+	view_changed = true;
 	}
 	if (!zoom_camera && dx != cursor_last_x && dy != cursor_last_y)
 	{
-		view_cam->zoom(-dx * 0.05, dy * 0.05, 0.0);
+	view_cam->zoom(-dx * 0.05, dy * 0.05, 0.0);
 	}*/
 
 	cursor_last_x = xpos;
@@ -327,9 +332,9 @@ void cursor_position_callback(GLFWwindow* /*window*/, double xpos, double ypos)
 
 }
 
-void scroll_callback(GLFWwindow* /*window*/, double /*xoffset*/, double yoffset)
+void scroll_callback(GLFWwindow* /*window*/, double /*x_offset*/, double y_offset)
 {
-	view_cam->zoom(0, 0, yoffset);
+	view_cam->zoom(0, 0, y_offset);
 
 	view_changed = true;
 }
