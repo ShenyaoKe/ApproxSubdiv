@@ -88,7 +88,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="..\src\common.h" />
-    <ClInclude Include="..\src\GregroryPatch.hh" />
+    <ClInclude Include="..\src\GregroryUtils.h" />
     <ClInclude Include="..\src\halfedge.h" />
     <ClInclude Include="..\src\main.h" />
     <ClInclude Include="..\src\OGLViewer.h" />

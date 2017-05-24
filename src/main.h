@@ -254,11 +254,7 @@ void key_callback(GLFWwindow* /*window*/, int key, int /*scancode*/, int action,
 	}
 	if (key == GLFW_KEY_KP_SUBTRACT)
 	{
-		tess_seg -= 1.0f;
-		if (tess_seg < 1.0f)
-		{
-			tess_seg = 1.0f;
-		}
+		tess_seg = std::max(1.0f, tess_seg - 1.0f);
 	}
 	view_changed = true;
 }

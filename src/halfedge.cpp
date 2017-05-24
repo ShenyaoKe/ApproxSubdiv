@@ -1,13 +1,16 @@
 #include "halfedge.h"
 
-int32_t HDS_Vertex::uid = 0;
-int32_t HDS_HalfEdge::uid = 0;
-int32_t HDS_Face::uid = 0;
-
-HDS_Mesh* buildHalfEdgeMesh(
-	const vector<Point3f> &inVerts, const vector<PolyIndex> &inFaces)
+namespace HDS
 {
-	HDS_Mesh::resetIndex();
+
+SizeType Vertex::uid = 0;
+SizeType HalfEdge::uid = 0;
+SizeType Face::uid = 0;
+
+Mesh* buildHalfEdgeMesh(const vector<Point3f> &inVerts,
+						const vector<PolyIndex> &inFaces)
+{
+	Mesh::resetIndex();
 	size_t vertsCount = inVerts.size();
 	size_t facesCount = inFaces.size();
 
@@ -16,21 +19,21 @@ HDS_Mesh* buildHalfEdgeMesh(
 	for (size_t i = 0; i < inFaces.size(); i++)
 		heCount += inFaces[i].size;
 
-	// Half-Edge arrays for actual HDS_Mesh
-	vector<vert_t> verts(vertsCount);
-	vector<face_t> faces(facesCount);
-	vector<he_t> hes(heCount);
+	// Half-Edge arrays for actual Mesh
+	vector<Vertex> verts(vertsCount);
+	vector<Face> faces(facesCount);
+	vector<HalfEdge> hes(heCount);
 	// Temporary Half-Edge Pair Recorder
-	//using hepair_t = pair<int32_t, int32_t>;
+	//using hepair_t = pair<SizeType, SizeType>;
 	using hepair_t = int64_t;
-	auto make_hePair = [](int32_t id1, int32_t id2) {
+	auto make_hePair = [] (SizeType id1, SizeType id2) {
 		return (int64_t(id1) << 32) + int64_t(id2);
 	};
-	auto reverse_hePair = [](int64_t id) {
+	auto reverse_hePair = [] (int64_t id) {
 		return (id << 32) + (id >> 32);
 	};
-	// TODO: replace by unordered_map
-	unordered_map<hepair_t, int32_t/*, Utils::pair_hash*/> heMap;
+
+	unordered_map<hepair_t, SizeType> heMap;
 
 	// Assign vertex positions and ids
 	for (size_t i = 0; i < vertsCount; i++)
@@ -42,17 +45,17 @@ HDS_Mesh* buildHalfEdgeMesh(
 	{
 		// Go through all faces
 		auto Fi = &inFaces[i];
-		int32_t fsize = Fi->size;
-		face_t* curFace = &faces[i];
+		SizeType fsize = Fi->size;
+		Face* curFace = &faces[i];
 
 		for (size_t j = 0; j < fsize; j++)
 		{
 			// calculate current, prev and next edge id
-			int32_t curIdx = j + heOffset;
+			SizeType curIdx = j + heOffset;
 
 			// link current face and vertex of the edge
 			auto &curHe = hes[curIdx];
-			// vid in polyindex has offset 1
+			// vid in poly index has offset 1
 			curHe.vid = Fi->v[j] - 1;
 			curHe.fid = i;
 			auto &curVert = verts[curHe.vid];
@@ -60,18 +63,18 @@ HDS_Mesh* buildHalfEdgeMesh(
 			// Check index boundary
 			// first: prev=last,   next=1
 			// last : prev=last-1, next=0
-			int32_t jprev = (j == 0) ? fsize - 1 : j - 1;
-			int32_t jnext = (j == fsize - 1) ? 0 : j + 1;
+			SizeType jprev = (j == 0) ? fsize - 1 : j - 1;
+			SizeType jnext = (j == fsize - 1) ? 0 : j + 1;
 			// Connect current edge with previous and next
 			curHe.next_offset = jnext - j;
 			curHe.prev_offset = jprev - j;
 
 			// connect current vertex to he
-			if (curVert.heid == sInvalidHDS) curVert.heid = curHe.index;
+			if (curVert.heid == cInvalidIndex) curVert.heid = curHe.index;
 
 			// record edge for flip connection
-			int32_t vj = Fi->v[j];
-			int32_t vj_next = Fi->v[jnext];
+			SizeType vj = Fi->v[j];
+			SizeType vj_next = Fi->v[jnext];
 			hepair_t vPair = make_hePair(vj, vj_next);
 			// Record edge pair
 			if (heMap.find(vPair) == heMap.end())
@@ -88,12 +91,12 @@ HDS_Mesh* buildHalfEdgeMesh(
 	// hash table for visited edges
 	vector<bool> visitedHEs(heMap.size(), false);
 	// hash set to record exposed edges
-	unordered_set<int32_t> exposedHEs;
+	unordered_set<SizeType> exposedHEs;
 	// for each half edge, find its flip
 	for (auto heit : heMap)
 	{
 		hepair_t hePair = heit.first;
-		int32_t heID = heit.second;
+		SizeType heID = heit.second;
 
 		if (!visitedHEs[heID])
 		{
@@ -124,7 +127,7 @@ HDS_Mesh* buildHalfEdgeMesh(
 		fillNullFaces(hes, faces, exposedHEs);
 	}
 
-	HDS_Mesh* thismesh = new HDS_Mesh(verts, hes, faces);
+	Mesh* thismesh = new Mesh(verts, hes, faces);
 
 	return thismesh;
 }
@@ -135,10 +138,9 @@ HDS_Mesh* buildHalfEdgeMesh(
 //	half-edges, faces,
 //	hash set of indices of exposed edges(flip == null)
 // 
-void fillNullFaces(
-	vector<he_t> &hes,
-	vector<face_t> &faces,
-	unordered_set<int32_t> &exposedHEs)
+void fillNullFaces(vector<HalfEdge> &hes,
+				   vector<Face> &faces,
+				   unordered_set<SizeType> &exposedHEs)
 {
 	// record initial edge number
 	size_t initSize = hes.size();
@@ -146,15 +148,15 @@ void fillNullFaces(
 	hes.resize(initSize + exposedHEs.size());
 	while (!exposedHEs.empty())
 	{
-		he_t* he = &hes[*exposedHEs.begin()];
+		HalfEdge* he = &hes[*exposedHEs.begin()];
 
 		// Skip checked edges, won't skip in first check
 		if (he->flip_offset) continue;
 
 		faces.emplace_back();
-		face_t* nullface = &faces.back();
+		Face* nullface = &faces.back();
 
-		vector<int32_t> null_hes, null_hefs;
+		vector<SizeType> null_hes, null_hefs;
 		size_t heIdOffset = initSize;
 		// record null edges on the same null face
 		auto curHE = he;
@@ -191,7 +193,7 @@ void fillNullFaces(
 		for (size_t i = 0; i < nNullEdges; i++)
 		{
 			curHE = &hes[null_hes[i]];
-			he_t* curHEF = &hes[initSize + i];
+			HalfEdge* curHEF = &hes[initSize + i];
 			null_hefs[i] = initSize + i;
 
 			curHE->isBoundary = curHEF->isBoundary = true;
@@ -216,4 +218,6 @@ void fillNullFaces(
 
 		initSize += nNullEdges;
 	}
+}
+
 }

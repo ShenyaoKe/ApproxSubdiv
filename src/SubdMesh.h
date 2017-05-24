@@ -16,6 +16,10 @@ struct BezierPatch
 {
 	Point3f patch[16];
 };
+struct GregoryPatch
+{
+	Point3f patch[20];
+};
 
 class SubdMesh
 {
@@ -23,11 +27,10 @@ public:
 	SubdMesh(const char* filename);
 	~SubdMesh();
 
-	void exportIndexedVBO(
-		vector<Float>* vtx_array = nullptr,
-		vector<Float>* uv_array = nullptr,
-		vector<Float>* norm_array = nullptr,
-		vector<unsigned int>* idx_array = nullptr) const;
+	void exportIndexedVBO(vector<Float>* vtx_array = nullptr,
+						  vector<Float>* uv_array = nullptr,
+						  vector<Float>* norm_array = nullptr,
+						  vector<uint32_t>* idx_array = nullptr) const;
 
 	void getPatch(BufferTrait &trait) const;
 	void getPatch(BufferTrait &bezier_trait, BufferTrait &gregory_trait) const;
@@ -38,7 +41,8 @@ private:
 
 	void initPatch();
 	void genBezierPatch(const vector<bool> &bad_face_hash);
-	void genGregoryPatch(vector<uint32_t> &vValenceCount, vector<uint32_t> &irreg_faces);
+	void genGregoryPatch(vector<uint32_t> &vValenceCount,
+						 vector<uint32_t> &irreg_faces);
 
 	void evalGregory() const;
 
@@ -51,7 +55,7 @@ private:
 	vector<Normal3f> norms;
 	vector<PolyIndex> fids;
 
-	unique_ptr<HDS_Mesh> mHDSMesh;
+	unique_ptr<HDS::Mesh> mHDSMesh;
 	// Bezier Patch
 	// 12---13---14---15
 	// |    |    |    |
@@ -61,6 +65,7 @@ private:
 	// |    |    |    |
 	// 00---01---02---03
 	vector<Point3f> bezier_patch;
+	//vector<BezierPatch> mBezierPatches;
 	// Gregory Patch Layout
 	// 15-----17-----11-----10
 	// |      |      |      |
@@ -73,5 +78,6 @@ private:
 	// |      |      |      |
 	// 00-----01-----07-----05
 	vector<Point3f> gregory_patch;
+	//vector<GregoryPatch> mGregoryPatch;
 };
 

@@ -2,148 +2,167 @@
 #include "common.h"
 #include "Geometry/TriangleMesh.h"
 
-static const int32_t sInvalidHDS = -1;
+using SizeType = uint32_t;
+using OffsetType = int32_t;
 
-/*
-* Vertex
-*/
-class HDS_Vertex
+static const SizeType cInvalidIndex = static_cast<SizeType>(-1);
+
+namespace HDS
+{
+
+// Vertex
+class Vertex
 {
 public:
-	HDS_Vertex() : index(uid++), heid(sInvalidHDS) {}
-	~HDS_Vertex() {}
+	Vertex() : index(uid++), pid(cInvalidIndex), heid(cInvalidIndex) {}
+	~Vertex() {}
 
 	static void resetIndex() { uid = 0; }
 
-	int32_t index;
-	int32_t heid;
+	SizeType pid;
+	SizeType index;
+	SizeType heid;
 private:
-	static int32_t uid;
+	static SizeType uid;
 };
 
-/*
-* Half-Edge
-*/
-class HDS_HalfEdge
+
+// Half-Edge
+class HalfEdge
 {
 public:
 	static void resetIndex() { uid = 0; }
-	static void matchIndexToSize(size_t	size) { uid = size; }
+	static void matchIndexToSize(SizeType size) { uid = size; }
 
-	HDS_HalfEdge() : index(uid++), fid(sInvalidHDS), vid(sInvalidHDS)
-		, prev_offset(0), next_offset(0), flip_offset(0), isBoundary(false) {}
-	~HDS_HalfEdge(){}
-
-	//HDS_HalfEdge(const HDS_HalfEdge& other);
-	//HDS_HalfEdge operator=(const HDS_HalfEdge& other);
+	HalfEdge() : index(uid++), fid(cInvalidIndex), vid(cInvalidIndex)
+		, prev_offset(0), next_offset(0), flip_offset(0)
+	{
+	}
+	~HalfEdge() {}
 
 	// Get the explicit pointer to corresponding edges
-	HDS_HalfEdge* prev() { return this + prev_offset; }
-	HDS_HalfEdge* next() { return this + next_offset; }
-	HDS_HalfEdge* flip() { return this + flip_offset; }
-	HDS_HalfEdge* rotCW() { return flip()->next(); }
-	HDS_HalfEdge* rotCCW() { return prev()->flip(); }
-	const HDS_HalfEdge* prev() const { return this + prev_offset; }
-	const HDS_HalfEdge* next() const { return this + next_offset; }
-	const HDS_HalfEdge* flip() const { return this + flip_offset; }
-	const HDS_HalfEdge* rotCW() const { return flip()->next(); }
-	const HDS_HalfEdge* rotCCW() const { return prev()->flip(); }
+	HalfEdge* prev() { return this + prev_offset; }
+	HalfEdge* next() { return this + next_offset; }
+	HalfEdge* flip() { return this + flip_offset; }
+	HalfEdge* rotCW() { return flip()->next(); }
+	HalfEdge* rotCCW() { return prev()->flip(); }
+	const HalfEdge* prev() const { return this + prev_offset; }
+	const HalfEdge* next() const { return this + next_offset; }
+	const HalfEdge* flip() const { return this + flip_offset; }
+	const HalfEdge* rotCW() const { return flip()->next(); }
+	const HalfEdge* rotCCW() const { return prev()->flip(); }
 
-	void setFlip(HDS_HalfEdge* f_e)
-	{ flip_offset = f_e - this; f_e->flip_offset = -flip_offset; }
+	//bool isBoundary() const { return flip_offset == 0; }
+
+	// No self-loop edge
+	void setToInvalid() { prev_offset = next_offset = 0; fid = cInvalidIndex; }
+	bool isInvalid() const { return prev_offset == 0 || next_offset == 0 || fid == cInvalidIndex; }
+
+	void setFlip(HalfEdge* f_e)
+	{
+		flip_offset = f_e - this;
+		f_e->flip_offset = -flip_offset;
+	}
+	void breakFlip()
+	{
+		flip_offset = flip()->flip_offset = 0;
+	}
 
 	//////////////////////////////////////////////////////////////////////////
-	int32_t index;
-	int32_t fid;
-	int32_t vid;
-
-	// Offset to index of previous/nex/flip edge
-	// previous/nex/flip edge doesn't exist
+	SizeType index;
+	SizeType fid;
+	SizeType vid;
+	// Offset to index of previous/next/flip edge
+	// previous/next/flip edge doesn't exist
 	// when (previous/nex/flip == 0)
-	int32_t prev_offset, next_offset, flip_offset;
+	OffsetType prev_offset, next_offset, flip_offset;
 
-	bool isBoundary;
+	bool isBoundary = false;
 private:
-	static int32_t uid;
+
+	static SizeType uid;
 };
 
-/*
-* Face
-*/
-class HDS_Face
+// Face
+class Face
 {
 public:
 	static void resetIndex() { uid = 0; }
 
-	HDS_Face() : index(uid++), heid(sInvalidHDS), isNullFace(false) {}
-	~HDS_Face() {}
+	Face() : index(uid++), heid(cInvalidIndex) {}
+	~Face() {}
 
 	// Get the connected half-edge id
 	// Explicit pointer access is handled by HDS_Mesh
-	int32_t heID() const { return heid; }
+	SizeType heID() const { return heid; }
+
+
+	void setToInvalid() { heid = cInvalidIndex; }
+	bool isInvalid() const { return heid == cInvalidIndex; }
 
 	// Member data
-	int32_t index;
-	int32_t heid;
-	bool isNullFace;
+	SizeType index;
+	SizeType heid;
+	bool isNullFace = false;
 private:
-	static int32_t uid;
+	static SizeType uid;
 };
 
-using vert_t = HDS_Vertex;
-using he_t = HDS_HalfEdge;
-using face_t = HDS_Face;
-/*
-* Mesh
-*/
-class HDS_Mesh
+// Mesh
+class Mesh
 {
 public:
-	HDS_Mesh() = delete;
-	HDS_Mesh(vector<vert_t> &vs, vector<he_t> &hes, vector<face_t> &fs)
-		: verts(std::move(vs))
-		, halfedges(std::move(hes))
-		, faces(std::move(fs)) {}
-	HDS_Mesh(const HDS_Mesh &other)
-		: verts(other.verts), halfedges(other.halfedges), faces(other.faces) {}
-	~HDS_Mesh() {}
+	Mesh() {}
+	Mesh(vector<Vertex> &vs, vector<HalfEdge> &hes, vector<Face> &fs)
+	: verts(std::move(vs))
+	, halfedges(std::move(hes))
+	, faces(std::move(fs)) {}
+	Mesh(const Mesh &other)
+		: verts(other.verts), halfedges(other.halfedges), faces(other.faces)
+	{
+	}
+	~Mesh() {}
 
 	// Reset UID in each component
 	// Mask(Bitwise Operation): face|edge|vertex
 	//    e.g. All(111==3), Vertex Only(001==1), Vertex+Edge(011==3)
-	static void resetIndex(uint8_t reset_mask = 7) {
-		if (reset_mask & 1) HDS_Vertex::resetIndex();
-		if (reset_mask & 2) HDS_HalfEdge::resetIndex();
-		if (reset_mask & 4) HDS_Face::resetIndex();
-	}
-	
-	void printInfo(const string &msg = "") {
-		if (!msg.empty()) cout << msg << endl;
-		cout << "#vertices = " << verts.size() << endl;
-		cout << "#faces = " << faces.size() << endl;
-		cout << "#half edges = " << halfedges.size() << endl;
+	static void resetIndex(uint8_t reset_mask = 7)
+	{
+		if (reset_mask & 1) Vertex::resetIndex();
+		if (reset_mask & 2) HalfEdge::resetIndex();
+		if (reset_mask & 4) Face::resetIndex();
 	}
 
-	he_t* heFromFace(int32_t fid) { return &halfedges[faces[fid].heid]; }
-	he_t* heFromVert(int32_t vid) { return &halfedges[verts[vid].heid]; }
-	vert_t* vertFromHe(int32_t heid) { return &verts[halfedges[heid].vid]; }
-	face_t* faceFromHe(int32_t heid) { return &faces[halfedges[heid].fid]; }
-	const he_t* heFromFace(int32_t fid) const { return &halfedges[faces[fid].heid]; }
-	const he_t* heFromVert(int32_t vid) const { return &halfedges[verts[vid].heid]; }
-	const vert_t* vertFromHe(int32_t heid) const { return &verts[halfedges[heid].vid]; }
-	const face_t* faceFromHe(int32_t heid) const { return &faces[halfedges[heid].fid]; }
+	void printInfo(const std::string &msg = "")
+	{
+		if (!msg.empty())
+		{
+			std::cout << msg << std::endl;
+		}
+		std::cout << "#vertices = " << verts.size() << std::endl;
+		std::cout << "#faces = " << faces.size() << std::endl;
+		std::cout << "#half edges = " << halfedges.size() << std::endl;
+	}
 
-	vector<vert_t> verts;
-	vector<he_t>   halfedges;
-	vector<face_t> faces;
+	HalfEdge* heFromFace(SizeType fid) { return &halfedges[faces[fid].heid]; }
+	HalfEdge* heFromVert(SizeType vid) { return &halfedges[verts[vid].heid]; }
+	Vertex* vertFromHe(SizeType heid) { return &verts[halfedges[heid].vid]; }
+	Face* faceFromHe(SizeType heid) { return &faces[halfedges[heid].fid]; }
+	const HalfEdge* heFromFace(SizeType fid) const { return &halfedges[faces[fid].heid]; }
+	const HalfEdge* heFromVert(SizeType vid) const { return &halfedges[verts[vid].heid]; }
+	const Vertex* vertFromHe(SizeType heid) const { return &verts[halfedges[heid].vid]; }
+	const Face* faceFromHe(SizeType heid) const { return &faces[halfedges[heid].fid]; }
+
+	vector<Vertex> verts;
+	vector<HalfEdge> halfedges;
+	vector<Face>     faces;
 };
 
-HDS_Mesh* buildHalfEdgeMesh(
-	const vector<Point3f> &inVerts,
-	const vector<PolyIndex> &inFaces
-);
-void fillNullFaces(
-	vector<he_t> &hes,
-	vector<face_t> &faces,
-	unordered_set<int32_t> &exposedHEs
-);
+Mesh* buildHalfEdgeMesh(const vector<Point3f> &inVerts,
+						const vector<PolyIndex> &inFaces);
+
+void fillNullFaces(vector<HalfEdge> &hes,
+				   vector<Face> &faces,
+				   unordered_set<SizeType> &exposedHEs);
+
+}

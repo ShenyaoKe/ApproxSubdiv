@@ -33,7 +33,7 @@
     <ClInclude Include="..\src\halfedge.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\GregroryPatch.hh">
+    <ClInclude Include="..\src\GregroryUtils.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

@@ -1,12 +1,12 @@
 #include "SubdMesh.h"
-#include "GregroryPatch.hh"
+#include "GregroryUtils.h"
 
 SubdMesh::SubdMesh(const char* filename)
 {
 	if (ObjParser::parse(filename, verts, uvs, norms, fids))
 	{
 		printf("file %s load successfully!\n", filename);
-		mHDSMesh.reset(buildHalfEdgeMesh(verts, fids));
+		mHDSMesh.reset(HDS::buildHalfEdgeMesh(verts, fids));
 		initPatch();
 		//savePatch();
 		evalGregory();
@@ -17,11 +17,10 @@ SubdMesh::~SubdMesh()
 {
 }
 
-void SubdMesh::exportIndexedVBO(
-	vector<Float>* vtx_array,
-	vector<Float>* /*uv_array*/,
-	vector<Float>* /*norm_array*/,
-	vector<unsigned int>* idx_array) const
+void SubdMesh::exportIndexedVBO(vector<Float>* vtx_array,
+								vector<Float>* /*uv_array*/,
+								vector<Float>* /*norm_array*/,
+								vector<uint32_t>* idx_array) const
 {
 	vtx_array->reserve(verts.size() * 3);
 	for (int i = 0; i < verts.size(); i++)
@@ -54,7 +53,7 @@ void SubdMesh::getPatch(BufferTrait &trait) const
 }
 
 void SubdMesh::getPatch(BufferTrait &bezier_trait,
-                        BufferTrait &gregory_trait) const
+						BufferTrait &gregory_trait) const
 {
 	bezier_trait.data = (void*)(bezier_patch.data());
 	bezier_trait.count = bezier_patch.size();
@@ -165,9 +164,16 @@ void SubdMesh::initPatch()
 	vector<uint32_t> badfaces;
 	vector<bool> bad_face_hash(fids.size(), false);
 	vector<bool> bad_vert_hash(verts.size(), false);
+	vector<uint32_t> boundaryVertex;
 
+	// Compute vertex valence
 	for (int i = 0; i < fids.size() ; i++)
 	{
+		if (mHDSMesh->faces[i].isNullFace)
+		{
+			continue;
+		}
+
 		auto &vids = fids[i].v;
 		bad_face_hash[i] = fids[i].size != 4;
 
@@ -175,17 +181,22 @@ void SubdMesh::initPatch()
 			vValenceCount[vid - 1]++;
 		});
 	}
-	uint32_t badvcount = 0;
+
+	// Find all faces using Gregory Patch
 	for (int i = 0; i < vValenceCount.size(); i++)
 	{
 		if (vValenceCount[i] != 4)
 		{
 			bad_vert_hash[i] = true;
-			badvcount++;
-			he_t* he = mHDSMesh->heFromVert(i);
-			he_t* curHE = he;
+			HDS::HalfEdge* he = mHDSMesh->heFromVert(i);
+			HDS::HalfEdge* curHE = he;
 			do
 			{
+				if (curHE->isBoundary)
+				{
+					boundaryVertex.push_back(i);
+				}
+
 				bad_face_hash[curHE->fid] = true;
 				curHE = curHE->flip()->next();
 			} while (curHE != he);
@@ -213,7 +224,10 @@ void SubdMesh::genBezierPatch(const vector<bool> &bad_face_hash)
 	for (size_t i = 0, pOffset = 0; i < fids.size(); i++)
 	{
 		// Offset in patch array
-		if (bad_face_hash[i]) continue;
+		if (bad_face_hash[i])
+		{
+			continue;
+		}
 
 		bezier_patch.resize(pOffset + sBezierPatchSize);
 		// calculate patch
@@ -306,8 +320,8 @@ void SubdMesh::genGregoryPatch(
 	// calculate face center and edge center
 	for (uint32_t i = 0; i < patchCount; i++)
 	{
-		he_t* he = mHDSMesh->heFromFace(i);
-		he_t* curHE = he;
+		HDS::HalfEdge* he = mHDSMesh->heFromFace(i);
+		HDS::HalfEdge* curHE = he;
 		Point3f fc(0, 0, 0);
 		do
 		{
@@ -337,8 +351,8 @@ void SubdMesh::genGregoryPatch(
 
 		gregory_patch.resize(pOffset + sGregoryPatchSize);
 
-		he_t* he = mHDSMesh->heFromFace(fid);
-		he_t* curHE = he;
+		HDS::HalfEdge* he = mHDSMesh->heFromFace(fid);
+		HDS::HalfEdge* curHE = he;
 		// Loop over current face
 		// for each corner
 		for (uint32_t j = 0; j < 4; j++)
@@ -396,7 +410,7 @@ void SubdMesh::genGregoryPatch(
 			/************************************************************************/
 			// TODO: remove redundant calculation for e- and p
 			valenceI = 0;
-			he_t* prevHE = curHE->rotCCW();
+			HDS::HalfEdge* prevHE = curHE->rotCCW();
 			do
 			{
 				if (!mHDSMesh->faceFromHe(prevHE->index)->isNullFace)
@@ -483,28 +497,28 @@ void SubdMesh::genGregoryPatch(
 	gregory_patch.shrink_to_fit();
 }
 
-Point3f bilinear_pos(
-	const Point3f &p0, const Point3f &p1,
-	const Point3f &p2, const Point3f &p3,
-	float s, float t)
-{
-	// id3 -- id2
-	//  |      |
-	// id0 -- id1
-	return lerp(lerp(p0, p1, s), lerp(p3, p2, s), t);
-}
-
 void SubdMesh::evalGregory() const
 {
 	const int tessSize = 5;
 	float us[tessSize];// = { 0, 0.5f, 1.0f };
 	float vs[tessSize];// = { 0, 0.5f, 1.0f };
+	float invTessSize = 1.0f / tessSize;
 	for (int i = 1; i < tessSize - 1; i++)
 	{
-		us[i] = vs[i] = float(i) / float(tessSize);
+		us[i] = vs[i] = float(i) * invTessSize;
 	}
 	us[0] = vs[0] = 0.0f;
 	us[tessSize - 1] = vs[tessSize - 1] = 1.0f;
+
+	auto bilinear_pos = [](const Point3f &p0, const Point3f &p1,
+						   const Point3f &p2, const Point3f &p3,
+						   float s, float t)
+	{
+		// id3 -- id2
+		//  |      |
+		// id0 -- id1
+		return lerp(lerp(p0, p1, s), lerp(p3, p2, s), t);
+	};
 
 	vector<Point3f> ret;
 	for (int ui = 0; ui < tessSize; ui++)
