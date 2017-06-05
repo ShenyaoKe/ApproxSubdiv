@@ -7,20 +7,24 @@ SizeType Vertex::uid = 0;
 SizeType HalfEdge::uid = 0;
 SizeType Face::uid = 0;
 
-Mesh* buildHalfEdgeMesh(const vector<Point3f> &inVerts,
-						const vector<PolyIndex> &inFaces)
+Mesh* buildHalfEdgeMesh(SizeType vertexCount,
+						const vector<SizeType> &faceIds,
+						const vector<SizeType> &faceSide,
+						const vector<SizeType> &faceIdOffset)
 {
 	Mesh::resetIndex();
-	size_t vertsCount = inVerts.size();
-	size_t facesCount = inFaces.size();
+
+	size_t facesCount = faceIdOffset.size();
 
 	size_t heCount = 0;
 	// Accumulate face size to get the number of half-edges
-	for (size_t i = 0; i < inFaces.size(); i++)
-		heCount += inFaces[i].size;
+	for (size_t i = 0; i < facesCount; i++)
+	{
+		heCount += faceSide[i];
+	}
 
 	// Half-Edge arrays for actual Mesh
-	vector<Vertex> verts(vertsCount);
+	vector<Vertex> verts(vertexCount);
 	vector<Face> faces(facesCount);
 	vector<HalfEdge> hes(heCount);
 	// Temporary Half-Edge Pair Recorder
@@ -35,36 +39,31 @@ Mesh* buildHalfEdgeMesh(const vector<Point3f> &inVerts,
 
 	unordered_map<hepair_t, SizeType> heMap;
 
-	// Assign vertex positions and ids
-	for (size_t i = 0; i < vertsCount; i++)
-	{
-		verts[i].index = i;
-	}
 	// Malloc Faces
 	for (size_t i = 0, heOffset = 0; i < facesCount; i++)
 	{
 		// Go through all faces
-		auto Fi = &inFaces[i];
-		SizeType fsize = Fi->size;
+		const SizeType* fids = &faceIds[i];
+		SizeType curFaceSide = faceSide[i];
 		Face* curFace = &faces[i];
 
-		for (size_t j = 0; j < fsize; j++)
+		for (size_t j = 0; j < curFaceSide; j++)
 		{
 			// calculate current, prev and next edge id
 			SizeType curIdx = j + heOffset;
 
 			// link current face and vertex of the edge
 			auto &curHe = hes[curIdx];
-			// vid in poly index has offset 1
-			curHe.vid = Fi->v[j] - 1;
+			// vid from obj index has offset 1
+			curHe.vid = fids[j] - 1;
 			curHe.fid = i;
 			auto &curVert = verts[curHe.vid];
 
 			// Check index boundary
 			// first: prev=last,   next=1
 			// last : prev=last-1, next=0
-			SizeType jprev = (j == 0) ? fsize - 1 : j - 1;
-			SizeType jnext = (j == fsize - 1) ? 0 : j + 1;
+			SizeType jprev = (j == 0) ? curFaceSide - 1 : j - 1;
+			SizeType jnext = (j == curFaceSide - 1) ? 0 : j + 1;
 			// Connect current edge with previous and next
 			curHe.next_offset = jnext - j;
 			curHe.prev_offset = jprev - j;
@@ -73,8 +72,8 @@ Mesh* buildHalfEdgeMesh(const vector<Point3f> &inVerts,
 			if (curVert.heid == cInvalidIndex) curVert.heid = curHe.index;
 
 			// record edge for flip connection
-			SizeType vj = Fi->v[j];
-			SizeType vj_next = Fi->v[jnext];
+			SizeType vj = fids[j];
+			SizeType vj_next = fids[jnext];
 			hepair_t vPair = make_hePair(vj, vj_next);
 			// Record edge pair
 			if (heMap.find(vPair) == heMap.end())
@@ -84,16 +83,15 @@ Mesh* buildHalfEdgeMesh(const vector<Point3f> &inVerts,
 		}
 
 		curFace->heid = heOffset;
-		//curFace->computeNormal();
 
-		heOffset += Fi->size;
+		heOffset += curFaceSide;
 	}
 	// hash table for visited edges
 	vector<bool> visitedHEs(heMap.size(), false);
 	// hash set to record exposed edges
 	unordered_set<SizeType> exposedHEs;
 	// for each half edge, find its flip
-	for (auto heit : heMap)
+	for (auto &heit : heMap)
 	{
 		hepair_t hePair = heit.first;
 		SizeType heID = heit.second;
@@ -102,7 +100,7 @@ Mesh* buildHalfEdgeMesh(const vector<Point3f> &inVerts,
 		{
 			visitedHEs[heID] = true;
 
-			auto invItem = heMap.find(reverse_hePair(hePair));
+			auto &invItem = heMap.find(reverse_hePair(hePair));
 
 			if (invItem != heMap.end())
 			{
@@ -120,6 +118,7 @@ Mesh* buildHalfEdgeMesh(const vector<Point3f> &inVerts,
 			}
 		}
 	}
+
 	// Check Holes and Fill with Null Faces
 	if (!exposedHEs.empty())
 	{
@@ -132,12 +131,7 @@ Mesh* buildHalfEdgeMesh(const vector<Point3f> &inVerts,
 	return thismesh;
 }
 
-// Functionality: 
-//	Add null face and edges directly into original buffer to make mesh validate.
-// Input buffers: 
-//	half-edges, faces,
-//	hash set of indices of exposed edges(flip == null)
-// 
+
 void fillNullFaces(vector<HalfEdge> &hes,
 				   vector<Face> &faces,
 				   unordered_set<SizeType> &exposedHEs)

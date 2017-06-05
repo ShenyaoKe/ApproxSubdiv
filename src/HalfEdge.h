@@ -19,9 +19,11 @@ public:
 
 	static void resetIndex() { uid = 0; }
 
+public:
 	SizeType pid;
 	SizeType index;
 	SizeType heid;
+
 private:
 	static SizeType uid;
 };
@@ -68,7 +70,7 @@ public:
 		flip_offset = flip()->flip_offset = 0;
 	}
 
-	//////////////////////////////////////////////////////////////////////////
+public:
 	SizeType index;
 	SizeType fid;
 	SizeType vid;
@@ -78,8 +80,8 @@ public:
 	OffsetType prev_offset, next_offset, flip_offset;
 
 	bool isBoundary = false;
-private:
 
+private:
 	static SizeType uid;
 };
 
@@ -100,6 +102,7 @@ public:
 	void setToInvalid() { heid = cInvalidIndex; }
 	bool isInvalid() const { return heid == cInvalidIndex; }
 
+public:
 	// Member data
 	SizeType index;
 	SizeType heid;
@@ -133,6 +136,7 @@ public:
 		if (reset_mask & 4) Face::resetIndex();
 	}
 
+
 	void printInfo(const std::string &msg = "")
 	{
 		if (!msg.empty())
@@ -153,16 +157,22 @@ public:
 	const Vertex* vertFromHe(SizeType heid) const { return &verts[halfedges[heid].vid]; }
 	const Face* faceFromHe(SizeType heid) const { return &faces[halfedges[heid].fid]; }
 
+public:
 	vector<Vertex> verts;
 	vector<HalfEdge> halfedges;
 	vector<Face>     faces;
 };
 
-Mesh* buildHalfEdgeMesh(const vector<Point3f> &inVerts,
-						const vector<PolyIndex> &inFaces);
-
-void fillNullFaces(vector<HalfEdge> &hes,
-				   vector<Face> &faces,
-				   unordered_set<SizeType> &exposedHEs);
-
+static Mesh* buildHalfEdgeMesh(SizeType vertexCount,
+							   const vector<SizeType> &faceIds,
+							   const vector<SizeType> &faceSide,
+							   const vector<SizeType> &faceIdOffset);
+// Functionality: 
+//     Add null face and edges directly into original buffer to make mesh validate.
+// Input buffers: 
+//     half-edges, faces,
+//     hash set of indices of exposed edges(flip == null)
+static void fillNullFaces(vector<HalfEdge> &hes,
+						  vector<Face> &faces,
+						  unordered_set<SizeType> &exposedHEs);
 }
