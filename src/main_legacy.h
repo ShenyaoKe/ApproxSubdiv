@@ -5,6 +5,7 @@
 #include "OGLViewer.h"
 #include "SubdMesh.h"
 
+using namespace Kaguya;
 
 static int32_t win_width = 640;
 static int32_t win_height = 480;
