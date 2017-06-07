@@ -7,7 +7,7 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Kaguya", "..\..\Kaguya\vs20
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "OpenGL_Utils", "..\..\OpenGL\visual_studio\OpenGL_Utils\OpenGL_Utils.vcxproj", "{95874169-3159-442D-BD3A-8D223BBEC7CE}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "CarpenterQt", "CarpenterQt.vcxproj", "{B12702AD-ABFB-343A-A199-8E24837244A3}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Carpenter", "Carpenter.vcxproj", "{B12702AD-ABFB-343A-A199-8E24837244A3}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

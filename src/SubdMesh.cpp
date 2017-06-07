@@ -586,9 +586,9 @@ void SubdMesh::computeTriGregoryPatch(SizeType fid, const GeomContext &context)
 	Point3f* InteriorFacePoint = &mPatchVertexBuffer[firstFaceId];
 
 	size_t firstPatchId = mTriGregoryPatchIndices.size();
-	mTriGregoryPatchIndices.resize(firstPatchId + sQuadBezierPatchSize);
+	mTriGregoryPatchIndices.resize(firstPatchId + sTriGregoryPatchSize);
 
-	SizeType* curPatchIdx = &mQuadGregoryPatchIndices[firstPatchId];
+	SizeType* curPatchIdx = &mTriGregoryPatchIndices[firstPatchId];
 	curPatchIdx[0] = vids[0];
 	curPatchIdx[5] = vids[1];
 	curPatchIdx[10] = vids[2];
