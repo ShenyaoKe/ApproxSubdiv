@@ -1,29 +1,29 @@
 #include "MainWindow.h"
 
-MainWindow::MainWindow(QWidget *parent)
+MainWindow::MainWindow(QWidget* parent)
 	: QMainWindow(parent)
-	, m_update_pending(false), m_animating(false)
+	, mUpdatePending(false), mAnimating(false)
+	, mOglViewer(new OglViewer)
 {
-	m_oglviewer = new OGLViewer;
 
-	ui.setupUi(this);
-	ui.ogl_layout->addWidget(m_oglviewer);
+	mUI.setupUi(this);
+	mUI.ogl_layout->addWidget(mOglViewer);
 	//setWindowTitle(tr("OpenGL Qt Template"));
 
-	m_oglviewer->setFocusPolicy(Qt::StrongFocus);
+	mOglViewer->setFocusPolicy(Qt::StrongFocus);
 }
 
 MainWindow::~MainWindow()
 {
-	delete m_oglviewer;
+	delete mOglViewer;
 }
 
-void MainWindow::on_actionAbout_triggered()
+void MainWindow::triggerAboutWindow()
 {
-	about = new QDialog(0,0);
+	mAbout = new QDialog(0,0);
 	Ui::about_dialog about_ui;
-	about_ui.setupUi(about);
-	about->show();
+	about_ui.setupUi(mAbout);
+	mAbout->show();
 }
 
 void MainWindow::closeEvent(QCloseEvent *e)

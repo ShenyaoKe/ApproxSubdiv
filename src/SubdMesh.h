@@ -1,7 +1,10 @@
 #pragma once
 #include "common.h"
 #include "Geometry/TriangleMesh.h"
-#include "halfedge.h"
+#include "HalfEdge.h"
+
+namespace Kaguya
+{
 
 struct BufferTrait
 {
@@ -21,10 +24,24 @@ struct GregoryPatch
 	Point3f patch[20];
 };
 
+struct GeomContext
+{
+	vector<uint32_t> mVertexValence;
+	unordered_set<uint32_t> mBoundaryVertex, mCornerVertex;
+	vector<bool> mBadFaceHash;
+
+	vector<Point3f> mEdgeMiddle;
+	vector<Point3f> mFaceCenter;
+};
+
 class SubdMesh
 {
 public:
-	SubdMesh(const char* filename);
+	static const uint32_t sTriGregoryPatchSize = 15;
+	static const uint32_t sQuadBezierPatchSize = 16;
+	static const uint32_t sQuadGregoryPatchSize = 20;
+
+	SubdMesh(const std::string &filename);
 	~SubdMesh();
 
 	void exportIndexedVBO(vector<Float>* vtx_array = nullptr,
@@ -32,30 +49,46 @@ public:
 						  vector<Float>* norm_array = nullptr,
 						  vector<uint32_t>* idx_array = nullptr) const;
 
-	void getPatch(BufferTrait &trait) const;
-	void getPatch(BufferTrait &bezier_trait, BufferTrait &gregory_trait) const;
+	void getPatch(BufferTrait &vertexBuffer,
+				  BufferTrait &bezierPatchIndexBuffer,
+				  BufferTrait &quadGregoryPatchIndexBuffer,
+				  BufferTrait &triGregoryPatchIndexBuffer) const;
 	void savePatch() const;
-private:
-	Point3f faceCenter(uint32_t fid) const;
-	Point3f edgeCenter(uint32_t heid) const;
 
-	void initPatch();
-	void genBezierPatch(const vector<bool> &bad_face_hash);
-	void genGregoryPatch(vector<uint32_t> &vValenceCount,
-						 vector<uint32_t> &irreg_faces);
+private:
+	Point3f faceCenter(SizeType fid) const;
+	Point3f edgeCenter(SizeType heid) const;
+
+	void process();
+	void specifyBoundaries(GeomContext &context);
+	void specifyPatchType(GeomContext &context);
+	// Cache edge middle points and face centers
+	void cacheGeometry(GeomContext &context);
+
+	// Generate Patch
+	void computeCornerPoints(const GeomContext &context);
+	void computeEdgePoints(const GeomContext &context);
+
+	// Generate Patch topology and compute face points
+	void computePatches(const GeomContext &context);
+	void computeBezierPatch(SizeType fid);
+	void computeQuadGregoryPatch(SizeType fid, const GeomContext &context);
+	void computeTriGregoryPatch(SizeType fid, const GeomContext &context);
 
 	void evalGregory() const;
 
 private:
-	static const uint32_t sBezierPatchSize = 16;
-	static const uint32_t sGregoryPatchSize = 20;
 
-	vector<Point3f> verts;
+	vector<Point3f> mVerts;
 	vector<Point2f> uvs;
 	vector<Normal3f> norms;
-	vector<PolyIndex> fids;
+	vector<SizeType> mFaceIndices;
+	vector<SizeType> mFaceSideCount;
+	vector<SizeType> mFaceIdOffset;
 
 	unique_ptr<HDS::Mesh> mHDSMesh;
+
+	vector<Point3f> mPatchVertexBuffer;
 	// Bezier Patch
 	// 12---13---14---15
 	// |    |    |    |
@@ -64,8 +97,9 @@ private:
 	// 04---05---06---07
 	// |    |    |    |
 	// 00---01---02---03
-	vector<Point3f> bezier_patch;
 	//vector<BezierPatch> mBezierPatches;
+	vector<SizeType> mBezierPatchIndices;
+
 	// Gregory Patch Layout
 	// 15-----17-----11-----10
 	// |      |      |      |
@@ -77,7 +111,20 @@ private:
 	// |      03     09     |
 	// |      |      |      |
 	// 00-----01-----07-----05
-	vector<Point3f> gregory_patch;
 	//vector<GregoryPatch> mGregoryPatch;
+	vector<SizeType> mQuadGregoryPatchIndices;
+
+	// Triangular Gregory Patch Layout
+	//               10
+	//             /    \
+	//           11      12
+	//          /  \    /  \
+	//        /    13  14    \
+	//      02--04        08--06
+	//     /      03    09      \
+	//   /         |    |         \
+	//  00--------01----07--------05
+	vector<SizeType> mTriGregoryPatchIndices;
 };
 
+}

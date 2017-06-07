@@ -3,55 +3,128 @@
   <ItemGroup>
     <Filter Include="Source Files">
       <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
-      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+      <Extensions>cpp;cxx;c;def</Extensions>
     </Filter>
     <Filter Include="Header Files">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
-      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+      <Extensions>h</Extensions>
+    </Filter>
+    <Filter Include="Form Files">
+      <UniqueIdentifier>{99349809-55BA-4b9d-BF79-8FDBB0286EB3}</UniqueIdentifier>
+      <Extensions>ui</Extensions>
     </Filter>
     <Filter Include="Resource Files">
-      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
-      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+      <UniqueIdentifier>{D9D6E242-F8AF-46E4-B9FD-80ECBC20BA3E}</UniqueIdentifier>
+      <Extensions>qrc;*</Extensions>
+      <ParseFiles>false</ParseFiles>
+    </Filter>
+    <Filter Include="Generated Files">
+      <UniqueIdentifier>{71ED8ED8-ACB9-4CE9-BBE1-E00B30144E11}</UniqueIdentifier>
+      <Extensions>moc;h;cpp</Extensions>
+      <SourceControlFiles>False</SourceControlFiles>
+    </Filter>
+    <Filter Include="Generated Files\Debug">
+      <UniqueIdentifier>{8b4c4416-5080-4c90-ba3d-43c2fb0140ae}</UniqueIdentifier>
+      <Extensions>cpp;moc</Extensions>
+      <SourceControlFiles>False</SourceControlFiles>
+    </Filter>
+    <Filter Include="Generated Files\Release">
+      <UniqueIdentifier>{3c53cfa5-9954-4dc4-8527-4a30a7bada49}</UniqueIdentifier>
+      <Extensions>cpp;moc</Extensions>
+      <SourceControlFiles>False</SourceControlFiles>
     </Filter>
     <Filter Include="Shaders">
-      <UniqueIdentifier>{a8e016af-9999-4650-bc8f-8dfb168e4827}</UniqueIdentifier>
+      <UniqueIdentifier>{3c91046a-2b4b-4919-93a7-208d239378b9}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\src\common.h">
+    <ClCompile Include="GeneratedFiles\qrc_MainWindow.cpp">
+      <Filter>Generated Files</Filter>
+    </ClCompile>
+    <ClCompile Include="GeneratedFiles\Debug\moc_MainWindow.cpp">
+      <Filter>Generated Files\Debug</Filter>
+    </ClCompile>
+    <ClCompile Include="GeneratedFiles\Release\moc_MainWindow.cpp">
+      <Filter>Generated Files\Release</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\SubdMesh.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\mainQt.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\MainWindow.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\OglViewer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="GeneratedFiles\Debug\moc_OglViewer.cpp">
+      <Filter>Generated Files\Debug</Filter>
+    </ClCompile>
+    <ClCompile Include="GeneratedFiles\Release\moc_OglViewer.cpp">
+      <Filter>Generated Files\Release</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\HalfEdge.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="..\ui\MainWindow.qrc">
+      <Filter>Resource Files</Filter>
+    </CustomBuild>
+    <CustomBuild Include="..\ui\MainWindow.ui">
+      <Filter>Form Files</Filter>
+    </CustomBuild>
+    <CustomBuild Include="..\ui\About.ui">
+      <Filter>Form Files</Filter>
+    </CustomBuild>
+    <CustomBuild Include="..\src\MainWindow.h">
       <Filter>Header Files</Filter>
+    </CustomBuild>
+    <CustomBuild Include="..\src\OglViewer.h">
+      <Filter>Header Files</Filter>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="GeneratedFiles\ui_MainWindow.h">
+      <Filter>Generated Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\OGLViewer.h">
+    <ClInclude Include="GeneratedFiles\ui_About.h">
+      <Filter>Generated Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\GregroryUtils.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\src\SubdMesh.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\main.h">
+    <ClInclude Include="..\src\common.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\halfedge.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\GregroryUtils.h">
+    <ClInclude Include="..\src\HalfEdge.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\src\main.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\src\OGLViewer.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\src\SubdMesh.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\src\halfedge.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-  </ItemGroup>
-  <ItemGroup>
+    <None Include="..\ui\stylesheet.qss">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="..\shaders\tri_gregory_patch_tc.glsl">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="..\shaders\tri_gregory_patch_te.glsl">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="..\shaders\patch_vs.glsl">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="..\shaders\post_fs.glsl">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="..\shaders\post_vs.glsl">
+      <Filter>Shaders</Filter>
+    </None>
     <None Include="..\shaders\quad_fs.glsl">
       <Filter>Shaders</Filter>
     </None>
@@ -61,10 +134,10 @@
     <None Include="..\shaders\quad_vs.glsl">
       <Filter>Shaders</Filter>
     </None>
-    <None Include="..\shaders\patch_fs.glsl">
+    <None Include="..\shaders\bezier_patch_tc.glsl">
       <Filter>Shaders</Filter>
     </None>
-    <None Include="..\shaders\patch_vs.glsl">
+    <None Include="..\shaders\bezier_patch_te.glsl">
       <Filter>Shaders</Filter>
     </None>
     <None Include="..\shaders\gregory_patch_tc.glsl">
@@ -73,11 +146,18 @@
     <None Include="..\shaders\gregory_patch_te.glsl">
       <Filter>Shaders</Filter>
     </None>
-    <None Include="..\shaders\bezier_patch_tc.glsl">
+    <None Include="..\shaders\patch_fs.glsl">
       <Filter>Shaders</Filter>
     </None>
-    <None Include="..\shaders\bezier_patch_te.glsl">
-      <Filter>Shaders</Filter>
-    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="..\ui\ProjectIcon.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="..\ui\ProjectIcon.rc">
+      <Filter>Resource Files</Filter>
+    </ResourceCompile>
   </ItemGroup>
 </Project>

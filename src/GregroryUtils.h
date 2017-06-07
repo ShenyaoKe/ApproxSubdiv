@@ -1,52 +1,55 @@
 #pragma once
 #include "Math/MathUtil.h"
 
+namespace Kaguya
+{
+
 namespace Gregory
 {
+
 using GFloat = double;
+
+constexpr GFloat cTriFaceD = 4.0;
+constexpr GFloat cTriFaceInvD = 1.0 / cTriFaceD;
+constexpr GFloat cQuadFaceD = 3.0;
+constexpr GFloat cQuadFaceInvD = 1.0 / cQuadFaceD;
+
 //////////////////////////////////////////////////////////////////////////
-// Coner Point p0
+// Corner Point p0
 // p0 = (n-3)/(n+5)*v + 4/(n*(n+5))*sum(mi+ci)
 //    = coef1 * v + coef2 * sum(mi+ci)
-inline GFloat corner_coef1(int N) {
+inline GFloat corner_coef1(int N)
+{
 	return GFloat(N - 3) / (N + 5);
 }
-inline GFloat corner_coef2(int N) {
+inline GFloat corner_coef2(int N)
+{
 	return 4.0 / (N * (N + 5));
 }
-const GFloat pce2[] = { corner_coef1(2), corner_coef2(2) };
-const GFloat pce3[] = { corner_coef1(3), corner_coef2(3) };
-const GFloat pce4[] = { corner_coef1(4), corner_coef2(4) };
-const GFloat pce5[] = { corner_coef1(5), corner_coef2(5) };
-const GFloat pce6[] = { corner_coef1(6), corner_coef2(6) };
-const GFloat pce7[] = { corner_coef1(7), corner_coef2(7) };
-const GFloat pce8[] = { corner_coef1(8), corner_coef2(8) };
-const GFloat pce9[] = { corner_coef1(9), corner_coef2(9) };
-inline const GFloat* corner_coef(int valence)
-{
-	switch (valence)
-	{
-	case 2: return pce3;
-	case 3: return pce3;
-	case 4: return pce4;
-	case 5: return pce5;
-	case 6: return pce6;
-	case 7: return pce7;
-	case 8: return pce8;
-	case 9: return pce9;
-	default: return nullptr;
-	}
-}
+
+static const uint32_t cMaxVertexValence = 16;
+static const GFloat cornerCoef[cMaxVertexValence][2]{
+	{ 0, 0 }, // Place holder
+	{ 1, 0 },
+	{ corner_coef1(2), corner_coef2(2) },
+	{ corner_coef1(3), corner_coef2(3) },
+	{ corner_coef1(4), corner_coef2(4) },
+	{ corner_coef1(5), corner_coef2(5) },
+	{ corner_coef1(6), corner_coef2(6) },
+	{ corner_coef1(7), corner_coef2(7) },
+	{ corner_coef1(8), corner_coef2(8) },
+	{ corner_coef1(9), corner_coef2(9) },
+	{ corner_coef1(10), corner_coef2(10) },
+	{ corner_coef1(11), corner_coef2(11) },
+	{ corner_coef1(12), corner_coef2(12) },
+	{ corner_coef1(13), corner_coef2(13) },
+	{ corner_coef1(14), corner_coef2(14) },
+	{ corner_coef1(15), corner_coef2(15) }
+};
 //////////////////////////////////////////////////////////////////////////
-inline GFloat theta_valence(int N) {
+inline GFloat theta_valence(int N)
+{
 	return 1.0 / sqrt(4 + sqr(cos(M_PI / N)));
-}
-inline GFloat lamda_valence(int N) {
-	GFloat invN = 1.0 / GFloat(N);
-	return 0.0625 * (
-		5.0 + cos(M_TWOPI * invN)
-		+ cos(M_PI * invN) * sqrt(18.0 + 2.0 * cos(M_TWOPI * invN))
-		);
 }
 
 // Precomputed theta for limit tangent
@@ -74,30 +77,45 @@ inline GFloat edge_theta(int valence)
 	default: return theta_valence(valence);
 	}
 }
+
 // Precomputed lambda for calculating edge points
-const GFloat eigen_v2 = lamda_valence(2);//TODO: not sure how to handle v2 yet
-const GFloat eigen_v3 = lamda_valence(3);
-const GFloat eigen_v4 = lamda_valence(4);
-const GFloat eigen_v5 = lamda_valence(5);
-const GFloat eigen_v6 = lamda_valence(6);
-const GFloat eigen_v7 = lamda_valence(7);
-const GFloat eigen_v8 = lamda_valence(8);
-const GFloat eigen_v9 = lamda_valence(9);
+inline GFloat lamda_valence(int N)
+{
+	GFloat invN = 1.0 / GFloat(N);
+	return 0.0625 * (
+		5.0 + cos(M_TWOPI * invN)
+		+ cos(M_PI * invN) * sqrt(18.0 + 2.0 * cos(M_TWOPI * invN))
+		);
+}
+
+const GFloat eigen[]{
+	1,//0
+	1,//1
+	lamda_valence(2),
+	lamda_valence(3),
+	lamda_valence(4),
+	lamda_valence(5),
+	lamda_valence(6),
+	lamda_valence(7),
+	lamda_valence(8),
+	lamda_valence(9),
+	lamda_valence(10),
+	lamda_valence(11),
+	lamda_valence(12),
+	lamda_valence(13),
+	lamda_valence(14),
+	lamda_valence(15),
+	lamda_valence(16)
+};
+
 // query function for lambda
 inline GFloat edge_eigen_val(int valence)
 {
-	switch (valence)
+	if (valence > cMaxVertexValence)
 	{
-	case 2: return eigen_v2;
-	case 3: return eigen_v3;
-	case 4: return eigen_v4;
-	case 5: return eigen_v5;
-	case 6: return eigen_v6;
-	case 7: return eigen_v7;
-	case 8: return eigen_v8;
-	case 9: return eigen_v9;
-	default: return lamda_valence(valence);
+		return lamda_valence(valence);
 	}
+	return eigen[valence];
 }
 // cosPi_N[i] = cos(Pi * i / N), 0<=i<2N 
 const GFloat cosPi_3[] = { 1, 0.5, -0.5, -1, -0.5, 0.5 };
@@ -115,9 +133,9 @@ const GFloat cosPi_6[] = {
 };
 const GFloat cosPi_7[] = {
 	 1, cos(M_PI / 7.0),     cos(M_PI * 2 / 7.0), cos(M_PI * 3 / 7.0),
-	    cos(M_PI * 4 / 7.0), cos(M_PI * 5 / 7.0), cos(M_PI * 6 / 7.0),
+		cos(M_PI * 4 / 7.0), cos(M_PI * 5 / 7.0), cos(M_PI * 6 / 7.0),
 	-1, cos(M_PI * 6 / 7.0), cos(M_PI * 5 / 7.0), cos(M_PI * 4 / 7.0),
-	    cos(M_PI * 3 / 7.0), cos(M_PI * 2 / 7.0), cos(M_PI / 7.0)
+		cos(M_PI * 3 / 7.0), cos(M_PI * 2 / 7.0), cos(M_PI / 7.0)
 };
 const GFloat cosPi_8[] = {
 	 1,  cos(M_PI * 0.125),  sqrt(2) * 0.5,  cos(M_PI * 0.375), // 0-3
@@ -160,4 +178,7 @@ inline GFloat edgeP_coefCi(int i, int N)
 {
 	return 2 * edge_theta(N) * cosPi(i * 2 + 1, N);
 }
+
+}
+
 }

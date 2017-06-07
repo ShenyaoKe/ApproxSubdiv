@@ -1,32 +1,36 @@
 #pragma once
+#ifndef QTOGL_WINDOW_H
+#define QTOGL_WINDOW_H
 
-#include "OGLViewer.h"
 #include <QMainWindow>
-//#include <QtGui/QWindow>
 #include <QDialog>
-#include <QtGui/QOpenGLFunctions>
+
+#include "OglViewer.h"
+
 #include "ui_MainWindow.h"
 #include "ui_About.h"
 
 
-class MainWindow : public QMainWindow, protected QOpenGLFunctions
+class MainWindow : public QMainWindow
 {
 	Q_OBJECT
 
 public:
-	MainWindow(QWidget *parent = 0);
+	MainWindow(QWidget* parent = 0);
 	~MainWindow();
 
-public slots:
-	void on_actionAbout_triggered();
+public:
+	void triggerAboutWindow();
 	//void aboutwindow();
 protected:
-	void closeEvent(QCloseEvent *e);
+	void closeEvent(QCloseEvent* e);
 private:
-	bool m_update_pending;
-	bool m_animating;
+	bool mUpdatePending;
+	bool mAnimating;
 
-	OGLViewer *m_oglviewer;
-	QDialog *about;
-	Ui::MainWindowClass ui;
+	OglViewer* mOglViewer;
+	QDialog* mAbout;
+	Ui::MainWindowClass mUI;
 };
+
+#endif // QTOGL_WINDOW_H

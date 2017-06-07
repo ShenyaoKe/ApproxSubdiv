@@ -1,4 +1,4 @@
-#include "halfedge.h"
+#include "HalfEdge.h"
 
 namespace HDS
 {
@@ -7,12 +7,14 @@ SizeType Vertex::uid = 0;
 SizeType HalfEdge::uid = 0;
 SizeType Face::uid = 0;
 
-Mesh* buildHalfEdgeMesh(SizeType vertexCount,
-						const vector<SizeType> &faceIds,
-						const vector<SizeType> &faceSide,
-						const vector<SizeType> &faceIdOffset)
+Mesh* Mesh::buildMesh(SizeType vertexCount,
+					  const vector<SizeType> &faceIds,
+					  const vector<SizeType> &faceSide,
+					  const vector<SizeType> &faceIdOffset)
 {
 	Mesh::resetIndex();
+
+	constexpr OffsetType idOfs = 0;
 
 	size_t facesCount = faceIdOffset.size();
 
@@ -43,7 +45,7 @@ Mesh* buildHalfEdgeMesh(SizeType vertexCount,
 	for (size_t i = 0, heOffset = 0; i < facesCount; i++)
 	{
 		// Go through all faces
-		const SizeType* fids = &faceIds[i];
+		const SizeType* fids = &faceIds[faceIdOffset[i]];
 		SizeType curFaceSide = faceSide[i];
 		Face* curFace = &faces[i];
 
@@ -55,7 +57,7 @@ Mesh* buildHalfEdgeMesh(SizeType vertexCount,
 			// link current face and vertex of the edge
 			auto &curHe = hes[curIdx];
 			// vid from obj index has offset 1
-			curHe.vid = fids[j] - 1;
+			curHe.vid = fids[j] + idOfs;
 			curHe.fid = i;
 			auto &curVert = verts[curHe.vid];
 
@@ -69,7 +71,10 @@ Mesh* buildHalfEdgeMesh(SizeType vertexCount,
 			curHe.prev_offset = jprev - j;
 
 			// connect current vertex to he
-			if (curVert.heid == cInvalidIndex) curVert.heid = curHe.index;
+			if (curVert.heid == cInvalidIndex)
+			{
+				curVert.heid = curHe.index;
+			}
 
 			// record edge for flip connection
 			SizeType vj = fids[j];
@@ -87,7 +92,7 @@ Mesh* buildHalfEdgeMesh(SizeType vertexCount,
 		heOffset += curFaceSide;
 	}
 	// hash table for visited edges
-	vector<bool> visitedHEs(heMap.size(), false);
+	vector<bool> visitedHEs(heCount, false);
 	// hash set to record exposed edges
 	unordered_set<SizeType> exposedHEs;
 	// for each half edge, find its flip
@@ -130,7 +135,6 @@ Mesh* buildHalfEdgeMesh(SizeType vertexCount,
 
 	return thismesh;
 }
-
 
 void fillNullFaces(vector<HalfEdge> &hes,
 				   vector<Face> &faces,

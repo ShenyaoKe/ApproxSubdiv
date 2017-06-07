@@ -157,16 +157,17 @@ public:
 	const Vertex* vertFromHe(SizeType heid) const { return &verts[halfedges[heid].vid]; }
 	const Face* faceFromHe(SizeType heid) const { return &faces[halfedges[heid].fid]; }
 
+	static Mesh* buildMesh(SizeType vertexCount,
+						   const vector<SizeType> &faceIds,
+						   const vector<SizeType> &faceSide,
+						   const vector<SizeType> &faceIdOffset);
 public:
 	vector<Vertex> verts;
 	vector<HalfEdge> halfedges;
 	vector<Face>     faces;
 };
 
-static Mesh* buildHalfEdgeMesh(SizeType vertexCount,
-							   const vector<SizeType> &faceIds,
-							   const vector<SizeType> &faceSide,
-							   const vector<SizeType> &faceIdOffset);
+
 // Functionality: 
 //     Add null face and edges directly into original buffer to make mesh validate.
 // Input buffers: 

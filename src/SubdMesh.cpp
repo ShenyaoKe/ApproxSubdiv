@@ -1,15 +1,34 @@
 #include "SubdMesh.h"
 #include "GregroryUtils.h"
+#include "Kaguya/IO/ObjLoader.h"
 
-SubdMesh::SubdMesh(const char* filename)
+namespace Kaguya
 {
-	if (ObjParser::parse(filename, verts, uvs, norms, fids))
+
+SubdMesh::SubdMesh(const std::string &filename)
+{
+	ObjBuffers tmpBuffers;
+	if (ObjLoader::loadRawBuffers(tmpBuffers, filename))
 	{
-		printf("file %s load successfully!\n", filename);
-		mHDSMesh.reset(HDS::buildHalfEdgeMesh(verts, fids));
-		initPatch();
-		//savePatch();
-		evalGregory();
+		mVerts = std::move(tmpBuffers.vertexBuffer);
+		mFaceIndices = std::move(tmpBuffers.faceIndexBuffer);
+		mFaceSideCount = std::move(tmpBuffers.faceSizeBuffer);
+		mFaceIdOffset.resize(mFaceSideCount.size(), 0);
+		for (SizeType i = 0; i < mFaceIdOffset.size() - 1; i++)
+		{
+			mFaceIdOffset[i + 1] = mFaceIdOffset[i] + mFaceSideCount[i];
+		}
+
+		printf("file %s load successfully!\n", filename.c_str());
+		mHDSMesh.reset(HDS::Mesh::buildMesh(mVerts.size(),
+										mFaceIndices,
+										mFaceSideCount,
+										mFaceIdOffset));
+		process();
+#if 0
+		savePatch();
+#endif
+		//evalGregory();
 	}
 }
 
@@ -22,89 +41,94 @@ void SubdMesh::exportIndexedVBO(vector<Float>* vtx_array,
 								vector<Float>* /*norm_array*/,
 								vector<uint32_t>* idx_array) const
 {
-	vtx_array->reserve(verts.size() * 3);
-	for (int i = 0; i < verts.size(); i++)
+	vtx_array->reserve(mVerts.size() * 3);
+	for (int i = 0; i < mVerts.size(); i++)
 	{
-		vtx_array->push_back(verts[i].x);
-		vtx_array->push_back(verts[i].y);
-		vtx_array->push_back(verts[i].z);
+		vtx_array->push_back(mVerts[i].x);
+		vtx_array->push_back(mVerts[i].y);
+		vtx_array->push_back(mVerts[i].z);
 	}
-	idx_array->reserve(fids.size() * 2);
-	for (int i = 0; i < fids.size(); i++)
+	idx_array->reserve(mFaceIndices.size());
+	for (int i = 0; i < mFaceIdOffset.size(); i++)
 	{
-		auto &fid = fids[i];
-		if (fid.size == 4)
+		const SizeType faceSide = mFaceSideCount[i];
+		const SizeType* vids = &mFaceIndices[mFaceIdOffset[i]];
+		if (faceSide == 4)
 		{
-			idx_array->push_back(fid.v[0] - 1);
-			idx_array->push_back(fid.v[1] - 1);
-			idx_array->push_back(fid.v[2] - 1);
-			idx_array->push_back(fid.v[3] - 1);
+			idx_array->push_back(vids[0] - 1);
+			idx_array->push_back(vids[1] - 1);
+			idx_array->push_back(vids[2] - 1);
+			idx_array->push_back(vids[3] - 1);
 		}
 	}
 }
 
-void SubdMesh::getPatch(BufferTrait &trait) const
+void SubdMesh::getPatch(BufferTrait &vertexBuffer,
+						BufferTrait &bezierPatchIndexBuffer,
+						BufferTrait &quadGregoryPatchIndexBuffer,
+						BufferTrait &triGregoryPatchIndexBuffer) const
 {
-	trait.data = (void*)(bezier_patch.data());
-	trait.count = bezier_patch.size();
-	trait.size = sizeof(Point3f) * trait.count;
-	trait.offset = 0;
-	trait.stride = sizeof(Point3f);
-}
+	vertexBuffer.data = (void*)mPatchVertexBuffer.data();
+	vertexBuffer.count = mPatchVertexBuffer.size();
+	vertexBuffer.size = sizeof(Point3f) * vertexBuffer.count;
+	vertexBuffer.offset = 0;
+	vertexBuffer.stride = sizeof(Point3f);
 
-void SubdMesh::getPatch(BufferTrait &bezier_trait,
-						BufferTrait &gregory_trait) const
-{
-	bezier_trait.data = (void*)(bezier_patch.data());
-	bezier_trait.count = bezier_patch.size();
-	bezier_trait.size = sizeof(Point3f) * bezier_trait.count;
-	bezier_trait.offset = 0;
-	bezier_trait.stride = sizeof(Point3f);
+	bezierPatchIndexBuffer.data = (void*)(mBezierPatchIndices.data());
+	bezierPatchIndexBuffer.count = mBezierPatchIndices.size();
+	bezierPatchIndexBuffer.size = sizeof(SizeType) * bezierPatchIndexBuffer.count;
+	bezierPatchIndexBuffer.offset = 0;
+	bezierPatchIndexBuffer.stride = sizeof(SizeType);
 
-	gregory_trait.data = (void*)(gregory_patch.data());
-	gregory_trait.count = gregory_patch.size();
-	gregory_trait.size = sizeof(Point3f) * gregory_trait.count;
-	gregory_trait.offset = 0;
-	gregory_trait.stride = sizeof(Point3f);
+	quadGregoryPatchIndexBuffer.data = (void*)(mQuadGregoryPatchIndices.data());
+	quadGregoryPatchIndexBuffer.count = mQuadGregoryPatchIndices.size();
+	quadGregoryPatchIndexBuffer.size = sizeof(SizeType) * quadGregoryPatchIndexBuffer.count;
+	quadGregoryPatchIndexBuffer.offset = 0;
+	quadGregoryPatchIndexBuffer.stride = sizeof(SizeType);
+
+	triGregoryPatchIndexBuffer.data = (void*)(mTriGregoryPatchIndices.data());
+	triGregoryPatchIndexBuffer.count = mTriGregoryPatchIndices.size();
+	triGregoryPatchIndexBuffer.size = sizeof(SizeType) * triGregoryPatchIndexBuffer.count;
+	triGregoryPatchIndexBuffer.offset = 0;
+	triGregoryPatchIndexBuffer.stride = sizeof(SizeType);
 }
 
 void SubdMesh::savePatch() const
 {
 	FILE* fp = fopen("patch.obj", "w");
-	fprintf(fp, "o [BezierPatch]\n");
-	uint32_t bezier_patch_size = bezier_patch.size();
-	for (int i = 0; i < bezier_patch.size(); i++)
+	SizeType vertexSize = mPatchVertexBuffer.size();
+	for (int i = 0; i < vertexSize; i++)
 	{
-		fprintf(fp, "v %f %f %f\n", bezier_patch[i].x, bezier_patch[i].y, bezier_patch[i].z);
+		fprintf(fp, "v %f %f %f\n",
+				mPatchVertexBuffer[i].x,
+				mPatchVertexBuffer[i].y,
+				mPatchVertexBuffer[i].z);
 	}
-	for (int i = 0; i < bezier_patch.size()/16; i++)
+
+	fprintf(fp, "o [BezierPatch]\n");
+	for (int i = 0; i < mBezierPatchIndices.size() / sQuadBezierPatchSize; i++)
 	{
 		fprintf(fp, "g [BezierPatchID%04d]\n", i);
-		int idx = i * 16 + 1;
-		fprintf(fp, "f %d %d %d %d\n", idx + 0, idx + 1, idx + 5, idx + 4);
-		fprintf(fp, "f %d %d %d %d\n", idx + 1, idx + 2, idx + 6, idx + 5);
-		fprintf(fp, "f %d %d %d %d\n", idx + 2, idx + 3, idx + 7, idx + 6);
+		const SizeType* idx = &mBezierPatchIndices[i * 16];
+		fprintf(fp, "f %d %d %d %d\n", idx[0] + 1, idx[1] + 1, idx[5] + 1, idx[4] + 1);
+		fprintf(fp, "f %d %d %d %d\n", idx[1] + 1, idx[2] + 1, idx[6] + 1, idx[5] + 1);
+		fprintf(fp, "f %d %d %d %d\n", idx[2] + 1, idx[3] + 1, idx[7] + 1, idx[6] + 1);
 
-		fprintf(fp, "f %d %d %d %d\n", idx + 4, idx + 5, idx + 9, idx + 8);
-		fprintf(fp, "f %d %d %d %d\n", idx + 5, idx + 6, idx + 10, idx + 9);
-		fprintf(fp, "f %d %d %d %d\n", idx + 6, idx + 7, idx + 11, idx + 10);
+		fprintf(fp, "f %d %d %d %d\n", idx[4] + 1, idx[5] + 1, idx[9] + 1, idx[8] + 1);
+		fprintf(fp, "f %d %d %d %d\n", idx[5] + 1, idx[6] + 1, idx[10] + 1, idx[9] + 1);
+		fprintf(fp, "f %d %d %d %d\n", idx[6] + 1, idx[7] + 1, idx[11] + 1, idx[10] + 1);
 
-		fprintf(fp, "f %d %d %d %d\n", idx + 8, idx + 9, idx + 13, idx + 12);
-		fprintf(fp, "f %d %d %d %d\n", idx + 9, idx + 10, idx + 14, idx + 13);
-		fprintf(fp, "f %d %d %d %d\n", idx + 10, idx + 11, idx + 15, idx + 14);
+		fprintf(fp, "f %d %d %d %d\n", idx[8] + 1, idx[9] + 1, idx[13] + 1, idx[12] + 1);
+		fprintf(fp, "f %d %d %d %d\n", idx[9] + 1, idx[10] + 1, idx[14] + 1, idx[13] + 1);
+		fprintf(fp, "f %d %d %d %d\n", idx[10] + 1, idx[11] + 1, idx[15] + 1, idx[14] + 1);
 	}
 
 	fprintf(fp, "o [GregoryPatch]\n");
-
-	for (auto &p : gregory_patch)
-	{
-		fprintf(fp, "v %f %f %f\n", p.x, p.y, p.z);
-	}
-	for (int i = 0; i < gregory_patch.size() / sGregoryPatchSize; i++)
+	for (int i = 0; i < mQuadGregoryPatchIndices.size() / sQuadGregoryPatchSize; i++)
 	{
 		fprintf(fp, "g GregoryPatchID%04d]\n", i);
-		int idx = i * sGregoryPatchSize + 1 + bezier_patch_size;
-		fprintf(fp,
+		const SizeType* idx = &mQuadGregoryPatchIndices[i * sQuadGregoryPatchSize];
+		/*fprintf(fp,
 				// corner
 				"f %d %d %d %d %d\n"
 				"f %d %d %d %d %d\n"
@@ -117,31 +141,42 @@ void SubdMesh::savePatch() const
 				"f %d %d %d %d\n"
 				// face fill
 				"f %d %d %d %d %d %d %d %d\n",
-				idx + 0,  idx + 1,  idx + 3,  idx + 4,  idx + 2,
-				idx + 5,  idx + 6,  idx + 8,  idx + 9,  idx + 7,
-				idx + 10, idx + 11, idx + 13, idx + 14, idx + 12,
-				idx + 15, idx + 16, idx + 18, idx + 19, idx + 17,
+				idx[0] + 1, idx[1] + 1, idx[3] + 1, idx[4] + 1, idx[2] + 1,
+				idx[5] + 1, idx[6] + 1, idx[8] + 1, idx[9] + 1, idx[7] + 1,
+				idx[10] + 1, idx[11] + 1, idx[13] + 1, idx[14] + 1, idx[12] + 1,
+				idx[15] + 1, idx[16] + 1, idx[18] + 1, idx[19] + 1, idx[17] + 1,
 
-				idx + 1,  idx + 7,  idx + 9,  idx + 3,
-				idx + 6,  idx + 12, idx + 14, idx + 8,
-				idx + 11, idx + 17, idx + 19, idx + 13,
-				idx + 16, idx + 2,  idx + 4,  idx + 18,
+				idx[1] + 1, idx[7] + 1, idx[9] + 1, idx[3] + 1,
+				idx[6] + 1, idx[12] + 1, idx[14] + 1, idx[8] + 1,
+				idx[11] + 1, idx[17] + 1, idx[19] + 1, idx[13] + 1,
+				idx[16] + 1, idx[2] + 1, idx[4] + 1, idx[18] + 1,
 
-				idx + 3,  idx + 9,  idx + 8,  idx + 14,
-				idx + 13, idx + 19, idx + 18, idx + 4);
+				idx[3] + 1, idx[9] + 1, idx[8] + 1, idx[14] + 1,
+				idx[13] + 1, idx[19] + 1, idx[18] + 1, idx[4] + 1);*/
+		fprintf(fp,
+				// corner
+				"f %d %d %d %d %d %d %d %d %d %d %d %d\n"
+				"f %d %d %d %d %d %d %d %d\n",
+				idx[0] + 1, idx[1] + 1, idx[7] + 1, idx[5] + 1, idx[6] + 1,
+				idx[12] + 1, idx[10] + 1, idx[11] + 1, idx[17] + 1, idx[15] + 1,
+				idx[16] + 1, idx[2] + 1,
+				//
+				idx[3] + 1, idx[9] + 1, idx[8] + 1, idx[14] + 1, idx[13] + 1,
+				idx[19] + 1, idx[18] + 1, idx[4] + 1);
 	}
+
 	fclose(fp);
 }
 
-Point3f SubdMesh::faceCenter(uint32_t fid) const
+Point3f SubdMesh::faceCenter(SizeType fid) const
 {
 	auto he = mHDSMesh->heFromFace(fid);
 	auto curHE = he;
 	Point3f cp;
-	uint32_t pCount = 0;
+	SizeType pCount = 0;
 	do
 	{
-		cp += verts[curHE->vid];
+		cp += mVerts[curHE->vid];
 		pCount++;
 		curHE = curHE->next();
 	} while (curHE != he);
@@ -152,350 +187,480 @@ Point3f SubdMesh::faceCenter(uint32_t fid) const
 	return cp;
 }
 
-Point3f SubdMesh::edgeCenter(uint32_t heid) const
+Point3f SubdMesh::edgeCenter(SizeType heid) const
 {
 	auto he = &mHDSMesh->halfedges[heid];
-	return (verts[he->vid] + verts[he->flip()->vid]) * 0.5f;
+	return (mVerts[he->vid] + mVerts[he->flip()->vid]) * 0.5f;
 }
 
-void SubdMesh::initPatch()
+void SubdMesh::process()
 {
-	vector<uint32_t> vValenceCount(verts.size(), 0);
-	vector<uint32_t> badfaces;
-	vector<bool> bad_face_hash(fids.size(), false);
-	vector<bool> bad_vert_hash(verts.size(), false);
-	vector<uint32_t> boundaryVertex;
+	GeomContext context;
+	cacheGeometry(context);
+	specifyBoundaries(context);
+	specifyPatchType(context);
+	// Cache vertex point
+	computeCornerPoints(context);
+	computeEdgePoints(context);
 
-	// Compute vertex valence
-	for (int i = 0; i < fids.size() ; i++)
+	// Compute result for each patch
+	computePatches(context);
+}
+
+void SubdMesh::cacheGeometry(GeomContext &context)
+{
+	// Assume context is cleared before passed in.
+	context.mVertexValence.resize(mVerts.size(), 0);
+	size_t validFaceCount = mFaceSideCount.size();
+
+	// Cache face centers
+	auto &faceCenters = context.mFaceCenter;
+	faceCenters.resize(validFaceCount);
+	for (size_t i = 0; i < validFaceCount; i++)
 	{
-		if (mHDSMesh->faces[i].isNullFace)
+		const SizeType faceSide = mFaceSideCount[i];
+		const SizeType* vids = &mFaceIndices[mFaceIdOffset[i]];
+
+		for (SizeType j = 0; j < faceSide; j++)
+		{
+			faceCenters[i] += mVerts[vids[j]];
+			context.mVertexValence[vids[j]]++;
+		}
+		faceCenters[i] /= faceSide;
+	}
+
+	// Cache edge middle points
+	auto &edgeMiddles = context.mEdgeMiddle;
+	edgeMiddles.resize(mHDSMesh->halfedges.size());
+	vector<bool> visitedEdges(mHDSMesh->halfedges.size(), false);
+	for (auto &he : mHDSMesh->halfedges)
+	{
+		if (visitedEdges[he.index])
 		{
 			continue;
 		}
+		auto hef = he.flip();
+		edgeMiddles[he.index] = edgeMiddles[hef->index]
+			= (mVerts[he.vid] + mVerts[hef->vid]) * 0.5f;
+		visitedEdges[he.index] = visitedEdges[hef->index] = true;
+	}
+}
 
-		auto &vids = fids[i].v;
-		bad_face_hash[i] = fids[i].size != 4;
+void SubdMesh::specifyBoundaries(GeomContext &context)
+{
 
-		for_each(vids.begin(), vids.end(), [&vValenceCount] (uint32_t vid) {
-			vValenceCount[vid - 1]++;
-		});
+	// Compute vertex valence
+	for (size_t i = mFaceSideCount.size(); i < mHDSMesh->faces.size(); i++)
+	{
+		assert(mHDSMesh->faces[i].isNullFace);
+		const HDS::HalfEdge* he = mHDSMesh->heFromFace(i);
+		auto curHE = he;
+		do
+		{
+			// If a vertex is on two NullFaces,
+			// it's non-manifold and is treated as corner vertex
+			if (!context.mBoundaryVertex.insert(curHE->vid).second)
+			{
+				context.mCornerVertex.insert(curHE->vid);
+			}
+			curHE = curHE->next();
+		} while (curHE != he);
+	}
+}
+
+void SubdMesh::specifyPatchType(GeomContext &context)
+{
+	// Assume context is cleared before passed in.
+	size_t validFaceCount = mFaceSideCount.size();
+	// Process Boundary Vertex
+	for (size_t i = validFaceCount; i < mHDSMesh->faces.size(); i++)
+	{
+		const HDS::HalfEdge* he = mHDSMesh->heFromFace(i);
+		auto &curHE = he;
+		do
+		{
+			// If a vertex is on two NullFaces,
+			// it's non-manifold and is treated as corner vertex
+			if (!context.mBoundaryVertex.insert(curHE->vid).second ||
+				context.mVertexValence[curHE->vid] == 1)
+			{
+				context.mCornerVertex.insert(curHE->vid);
+			}
+			curHE = curHE->next();
+		} while (curHE != he);
 	}
 
 	// Find all faces using Gregory Patch
-	for (int i = 0; i < vValenceCount.size(); i++)
+	context.mBadFaceHash.resize(validFaceCount, false);
+	for (int i = 0; i < context.mVertexValence.size(); i++)
 	{
-		if (vValenceCount[i] != 4)
+		if (context.mVertexValence[i] != 4 ||
+			context.mBoundaryVertex.find(i) != context.mBoundaryVertex.end())
 		{
-			bad_vert_hash[i] = true;
-			HDS::HalfEdge* he = mHDSMesh->heFromVert(i);
-			HDS::HalfEdge* curHE = he;
+			const HDS::HalfEdge* he = mHDSMesh->heFromVert(i);
+			const HDS::HalfEdge* curHE = he;
 			do
 			{
-				if (curHE->isBoundary)
+				if (curHE->fid < validFaceCount)
 				{
-					boundaryVertex.push_back(i);
+					context.mBadFaceHash[curHE->fid] = true;
 				}
-
-				bad_face_hash[curHE->fid] = true;
 				curHE = curHE->flip()->next();
 			} while (curHE != he);
 		}
 	}
-	//////////////////////////////////////////////////////////////////////////
-	genBezierPatch(bad_face_hash);
-
-	for (int i = 0; i < bad_face_hash.size(); i++)
-	{
-		if (bad_face_hash[i])
-		{
-			badfaces.push_back(i);
-		}
-	}
-	genGregoryPatch(vValenceCount, badfaces);
 }
 
-void SubdMesh::genBezierPatch(const vector<bool> &bad_face_hash)
+void SubdMesh::computeCornerPoints(const GeomContext &context)
 {
-	// Patch Generation
-	bezier_patch.clear();
+	auto &faceCenters = context.mFaceCenter;
+	auto &edgeMiddles = context.mEdgeMiddle;
+	auto &vertValence = context.mVertexValence;
+	auto &cornerVerts = context.mCornerVertex;
+	auto &boundaryVerts = context.mBoundaryVertex;
 
-	bezier_patch.reserve(fids.size() * sBezierPatchSize);
-	for (size_t i = 0, pOffset = 0; i < fids.size(); i++)
+	mPatchVertexBuffer.resize(mVerts.size());
+	for (size_t i = 0; i < mVerts.size(); i++)
 	{
-		// Offset in patch array
-		if (bad_face_hash[i])
+		const HDS::HalfEdge* he = mHDSMesh->heFromVert(i);
+		auto curHE = he;
+
+		const SizeType valence = vertValence[i];
+		// Corner vertex
+		if (cornerVerts.find(i) != cornerVerts.end())
 		{
-			continue;
+			mPatchVertexBuffer[i] = mVerts[i];
 		}
-
-		bezier_patch.resize(pOffset + sBezierPatchSize);
-		// calculate patch
-		uint32_t vid[16];
-		//////////////////////////////////////////////////////////////////////////
-		// Cache out neighbour vertices
-		auto he = mHDSMesh->heFromFace(i);
-		auto he_oppo = he->flip()->prev();
-		vid[5] = he->vid;
-		vid[1] = he_oppo->prev()->vid;
-		vid[2] = he_oppo->vid;
-		vid[3] = he_oppo->flip()->next()->next()->vid;
-
-		he = he->next();
-		he_oppo = he->flip()->prev();
-		vid[6] = he->vid;
-		vid[7] = he_oppo->prev()->vid;
-		vid[11] = he_oppo->vid;
-		vid[15] = he_oppo->flip()->next()->next()->vid;
-
-		he = he->next();
-		he_oppo = he->flip()->prev();
-		vid[10] = he->vid;
-		vid[14] = he_oppo->prev()->vid;
-		vid[13] = he_oppo->vid;
-		vid[12] = he_oppo->flip()->next()->next()->vid;
-
-		he = he->next();
-		he_oppo = he->flip()->prev();
-		vid[9] = he->vid;
-		vid[8] = he_oppo->prev()->vid;
-		vid[4] = he_oppo->vid;
-		vid[0] = he_oppo->flip()->next()->next()->vid;
-		//////////////////////////////////////////////////////////////////////////
-
-		auto cornerPatch = [&](uint32_t id) {
-			return (verts[vid[id]] * 16
-				+ (verts[vid[id - 1]] + verts[vid[id + 1]]
-					+ verts[vid[id - 4]] + verts[vid[id + 4]]) * 4
-				+ verts[vid[id - 5]] + verts[vid[id + 5]]
-				+ verts[vid[id - 3]] + verts[vid[id + 3]]) / 36.0f;
-		};
-		auto edgePatch = [&](uint32_t id, uint32_t id2) {
-			auto neighbor_off = 5u - abs(int32_t(id2 - id));
-			return (
-				verts[vid[id]] * 8
-				+ verts[vid[id2]] * 4
-				+ (verts[vid[id + neighbor_off]] + verts[vid[id - neighbor_off]]) * 2
-				+ verts[vid[id2 + neighbor_off]] + verts[vid[id2 - neighbor_off]]
-				) / 18.0f;
-		};
-		auto interialPatch = [&]
-		(uint32_t id, uint32_t id2, uint32_t id3, uint32_t id_diag) {
-			return (verts[vid[id]] * 4
-				+ (verts[vid[id2]] + verts[vid[id3]]) * 2
-				+ verts[vid[id_diag]]) / 9.0f;
-		};
-		bezier_patch[pOffset] = cornerPatch(5);
-		bezier_patch[pOffset + 3] = cornerPatch(6);
-		bezier_patch[pOffset + 12] = cornerPatch(9);
-		bezier_patch[pOffset + 15] = cornerPatch(10);
-
-		bezier_patch[pOffset + 1] = edgePatch(5, 6);
-		bezier_patch[pOffset + 2] = edgePatch(6, 5);
-		bezier_patch[pOffset + 4] = edgePatch(5, 9);
-		bezier_patch[pOffset + 8] = edgePatch(9, 5);
-		bezier_patch[pOffset + 7] = edgePatch(6, 10);
-		bezier_patch[pOffset + 11] = edgePatch(10, 6);
-		bezier_patch[pOffset + 13] = edgePatch(9, 10);
-		bezier_patch[pOffset + 14] = edgePatch(10, 9);
-
-		bezier_patch[pOffset + 5] = interialPatch(5, 6, 9, 10);
-		bezier_patch[pOffset + 6] = interialPatch(6, 5, 10, 9);
-		bezier_patch[pOffset + 9] = interialPatch(9, 5, 10, 6);
-		bezier_patch[pOffset + 10] = interialPatch(10, 6, 9, 5);
-		// Move on
-		pOffset += sBezierPatchSize;
-	}
-	bezier_patch.shrink_to_fit();
-}
-
-void SubdMesh::genGregoryPatch(
-	vector<uint32_t> &vValenceCount,
-	vector<uint32_t> &irreg_faces
-)
-{
-	unordered_map<uint32_t, Point3f> fCenters;
-	unordered_map<uint32_t, Point3f> heCenters;
-	uint32_t patchCount = irreg_faces.size();
-	// calculate face center and edge center
-	for (uint32_t i = 0; i < patchCount; i++)
-	{
-		HDS::HalfEdge* he = mHDSMesh->heFromFace(i);
-		HDS::HalfEdge* curHE = he;
-		Point3f fc(0, 0, 0);
-		do
+		// Boundary Vertex
+		if (valence == 2 || boundaryVerts.find(i) != boundaryVerts.end())
 		{
-			if (heCenters.find(curHE->index) == heCenters.end())
-			{
-				auto hec = (verts[curHE->vid]
-					+ verts[curHE->flip()->vid]) * 0.5f;
-				heCenters.insert(make_pair(curHE->index, hec));
-				heCenters.insert(make_pair(curHE->flip()->index, hec));
-			}
-			fc += verts[curHE->vid];
-			curHE = curHE->next();
-		} while (curHE != he);
-		fCenters.insert(make_pair(i, fc * 0.25f));
-	}
-
-	gregory_patch.reserve(patchCount * sGregoryPatchSize);
-
-	size_t pOffset = 0;
-	const uint32_t subPatchSize = 5;
-	// Go through faces
-	for (uint32_t i = 0; i < patchCount; i++)
-	{
-		uint32_t fid = irreg_faces[i];
-		PolyIndex &fIdx = fids[fid];
-		if (fIdx.size != 4) continue;
-
-		gregory_patch.resize(pOffset + sGregoryPatchSize);
-
-		HDS::HalfEdge* he = mHDSMesh->heFromFace(fid);
-		HDS::HalfEdge* curHE = he;
-		// Loop over current face
-		// for each corner
-		for (uint32_t j = 0; j < 4; j++)
-		{
-			uint32_t vid = curHE->vid;
-			uint32_t vValence = vValenceCount[vid];
-			auto corner_coef = Gregory::corner_coef(vValence);
-			Point3f* curP0 = &gregory_patch[pOffset + j * subPatchSize];
-			Point3f* curE0_plus = curP0 + 1;
-			Point3f* curE0_minus = curP0 + 2;
-			// Loop over adjacent edges and vertices around current vertex
-			/************************************************************************/
-			/* P and e+                                                             */
-			/************************************************************************/
-			uint32_t valenceI = 0;
+			// TODO: Valence-2 vertex should be handled properly
+			mPatchVertexBuffer[i] += mVerts[i] * 4;
 			do
 			{
-				if (!mHDSMesh->faceFromHe(curHE->index)->isNullFace)
+				if (curHE->isBoundary)
 				{
-					// TODO: cache out face center and edge center
-					uint32_t curFid = curHE->fid;
-					uint32_t curHEid = curHE->index;
-					if (fCenters.find(curFid) == fCenters.end())
-					{
-						fCenters.insert(make_pair(
-							curFid, faceCenter(curFid)
-						));
-					}
-					if (heCenters.find(curHEid) == heCenters.end())
-					{
-						auto hec = edgeCenter(curHEid);
-						heCenters.insert(make_pair(
-							curHEid, hec
-						));
-						heCenters.insert(make_pair(
-							curHE->flip()->index, hec
-						));
-					}
-					// Accumulate corner point
-					*curP0 += fCenters.at(curFid) + heCenters.at(curHEid);
-					*curE0_plus +=
-						Gregory::edgeP_coefMi(valenceI, vValence) * heCenters.at(curHEid)
-						+ Gregory::edgeP_coefCi(valenceI, vValence) * fCenters.at(curFid);
-					
-					valenceI++;
+					mPatchVertexBuffer[i] += mVerts[curHE->flip()->vid];
 				}
 				curHE = curHE->rotCCW();
 			} while (curHE != he);
-			*curP0 *= corner_coef[1];
-			*curP0 += corner_coef[0] * verts[vid];
-			*curE0_plus *= 4.0 / 3.0 / vValence * Gregory::edge_eigen_val(vValence);
-			*curE0_plus += *curP0;
-			/************************************************************************/
-			/* e-                                                                   */
-			/************************************************************************/
-			// TODO: remove redundant calculation for e- and p
-			valenceI = 0;
-			HDS::HalfEdge* prevHE = curHE->rotCCW();
+			mPatchVertexBuffer[i] /= 6.0f;
+		}
+		else
+		{
 			do
 			{
-				if (!mHDSMesh->faceFromHe(prevHE->index)->isNullFace)
-				{
-					// TODO: cache out face center and edge center
-					uint32_t curFid = prevHE->fid;
-					uint32_t curHEid = prevHE->index;
-					if (fCenters.find(curFid) == fCenters.end())
-					{
-						fCenters.insert(make_pair(
-							curFid, faceCenter(curFid)
-						));
-					}
-					if (heCenters.find(curHEid) == heCenters.end())
-					{
-						auto hec = edgeCenter(curHEid);
-						heCenters.insert(make_pair(
-							curHEid, hec
-						));
-						heCenters.insert(make_pair(
-							prevHE->flip()->index, hec
-						));
-					}
-					*curE0_minus += Gregory::edgeP_coefMi(valenceI, vValence) * heCenters.at(curHEid)
-						+ Gregory::edgeP_coefCi(valenceI, vValence) * fCenters.at(curFid);
+				mPatchVertexBuffer[i] +=
+					faceCenters[curHE->fid] + edgeMiddles[curHE->index];
+				curHE = curHE->rotCCW();
+			} while (curHE != he);
 
-					valenceI++;
-				}
-				prevHE = prevHE->rotCCW();
-			} while (prevHE != curHE->rotCCW());
-			*curE0_minus *= 2.0 / vValence;
-			*curE0_minus *= 2.0 / 3.0 *  Gregory::edge_eigen_val(vValence);
-			*curE0_minus += *curP0;
-			// End of e0-
-
-			he = curHE = curHE->next();
+			mPatchVertexBuffer[i] =
+				mVerts[i] * Gregory::cornerCoef[valence][0] +
+				mPatchVertexBuffer[i] * Gregory::cornerCoef[valence][1];
 		}
-		// After all corner points Pi and edge points e+/e- are calculated
-		// Calculate face points
-		curHE = he;
-		for (uint32_t j = 0; j < 4; j++)
-		{
-			// calculate c0,c1,c2
-			uint32_t vid = curHE->vid;
-			const int dFaceType = 3;//it's 
-			const Float inv_d = 1.0 / dFaceType;
-			auto c0 = Gregory::cosPi(2, vValenceCount[vid]);
-			auto c1 = Gregory::cosPi(2, vValenceCount[curHE->next()->vid]);
-			auto c2 = Gregory::cosPi(2, vValenceCount[curHE->prev()->vid]);
-
-			Point3f* curP0 = &gregory_patch[pOffset + j * subPatchSize];
-			Point3f* e_plus = curP0 + 1;
-			Point3f* e_minus = curP0 + 2;
-			Point3f* f_plus = curP0 + 3;
-			Point3f* f_minus = curP0 + 4;
-			Point3f* e_prev_plus = j == 0 ? curP0 + 16 : curP0 - 4;
-			Point3f* e_next_minus = j == 3 ? curP0 - 13 : curP0 + 7;
-			// f+
-			// get r+
-			Vector3f r_plus =
-				(heCenters.at(curHE->prev()->index) - heCenters.at(curHE->rotCW()->index)) / 3.0
-				+ (fCenters.at(curHE->fid) - fCenters.at(curHE->rotCW()->fid)) * 2.0 / 3.0;
-
-			*f_plus = (c1 * *curP0
-				+ (dFaceType - 2 * c0 - c1) * *e_plus
-				+ 2 * c0 * *e_next_minus
-				+ r_plus) * inv_d;
-			// f-
-			// get r-
-			Vector3f r_minus =
-				(heCenters.at(curHE->index) - heCenters.at(curHE->rotCCW()->prev()->index)) / 3.0
-				+ (fCenters.at(curHE->fid) - fCenters.at(curHE->rotCCW()->fid)) * 2.0 / 3.0;
-
-			*f_minus = (c2 * *curP0
-				+ (dFaceType - 2 * c0 - c2) * *e_minus
-				+ 2 * c0 * *e_prev_plus
-				+ r_minus) * inv_d;
-
-			// move to next edge
-			curHE = curHE->next();
-		}
-		pOffset += sGregoryPatchSize;
 	}
-	gregory_patch.shrink_to_fit();
 }
+
+void SubdMesh::computeEdgePoints(const GeomContext &context)
+{
+	// move 2 from q = 2/n * sum(...) to 2/3*lambda q
+	const Float cFourOverThree = 4.0 / 3.0;
+
+	size_t initSize = mPatchVertexBuffer.size();
+	size_t edgeCount = mHDSMesh->halfedges.size();
+	mPatchVertexBuffer.resize(initSize + edgeCount);
+	Point3f* edgePoints = &mPatchVertexBuffer[initSize];
+	for (auto &he : mHDSMesh->halfedges)
+	{
+		Point3f q;
+		SizeType valence = context.mVertexValence[he.vid];
+		const HDS::HalfEdge* curHE = &he;
+		for (SizeType i = 0; i < valence; i++)
+		{
+			q += Gregory::edgeP_coefMi(i, valence) * context.mEdgeMiddle[curHE->index] +
+				Gregory::edgeP_coefCi(i, valence) * context.mFaceCenter[curHE->fid];
+			curHE = curHE->rotCCW();
+		}
+		q *= (Gregory::lamda_valence(valence) * cFourOverThree / Float(valence));
+		edgePoints[he.index] = q + mPatchVertexBuffer[he.vid];
+	}
+}
+
+void SubdMesh::computePatches(const GeomContext &context)
+{
+
+	for (SizeType fid = 0; fid < mFaceSideCount.size(); fid++)
+	{
+		const SizeType faceSide = mFaceSideCount[fid];
+		//const SizeType* vids = &mFaceIndices[mFaceIdOffset[i]];
+
+		switch (faceSide)
+		{
+		case 3:
+		{
+			// generate Triangular Gregory patch
+			computeTriGregoryPatch(fid, context);
+			break;
+		}
+		case 4:
+		{
+			if (context.mBadFaceHash[fid])
+			{
+				// Generate Quad Gregory Patch
+				computeQuadGregoryPatch(fid, context);
+			}
+			else
+			{
+				// Generate Bezier Patch
+				computeBezierPatch(fid);
+			}
+			break;
+		}
+		default:
+		{
+			break;
+		}
+		}
+	}
+}
+
+void SubdMesh::computeBezierPatch(SizeType fid)
+{
+	std::array<const HDS::HalfEdge*, 4> hes{ mHDSMesh->heFromFace(fid) };
+	hes[1] = hes[0]->next();
+	hes[2] = hes[1]->next();
+	hes[3] = hes[2]->next();
+
+	const SizeType* vids = &mFaceIndices[mFaceIdOffset[fid]];
+
+	assert(hes[0]->vid == vids[0]);
+
+	auto interialPatch = [&](SizeType id1, SizeType id2, SizeType id3, SizeType id4)
+	{
+		static const Float invNine = 1.0f / 9.0f;
+		return (mVerts[id1] * 4 + (mVerts[id2] + mVerts[id4]) * 2 + mVerts[id3]) * invNine;
+	};
+
+	SizeType firstFaceId = mPatchVertexBuffer.size();
+	mPatchVertexBuffer.resize(firstFaceId + 4);
+	mPatchVertexBuffer[firstFaceId] = interialPatch(vids[0], vids[1], vids[2], vids[3]);
+	mPatchVertexBuffer[firstFaceId + 1] = interialPatch(vids[1], vids[2], vids[3], vids[0]);
+	mPatchVertexBuffer[firstFaceId + 2] = interialPatch(vids[2], vids[3], vids[0], vids[1]);
+	mPatchVertexBuffer[firstFaceId + 3] = interialPatch(vids[3], vids[0], vids[1], vids[2]);
+
+	size_t firstPatchId = mBezierPatchIndices.size();
+	mBezierPatchIndices.resize(firstPatchId + sQuadBezierPatchSize);
+
+	SizeType* curPatchIdx = &mBezierPatchIndices[firstPatchId];
+	curPatchIdx[0] = vids[0];
+	curPatchIdx[3] = vids[1];
+	curPatchIdx[15] = vids[2];
+	curPatchIdx[12] = vids[3];
+
+	SizeType vertexOffset = mVerts.size();
+	curPatchIdx[1] = hes[0]->index + vertexOffset;
+	curPatchIdx[2] = hes[0]->flip()->index + vertexOffset;
+	curPatchIdx[7] = hes[1]->index + vertexOffset;
+	curPatchIdx[11] = hes[1]->flip()->index + vertexOffset;
+	curPatchIdx[14] = hes[2]->index + vertexOffset;
+	curPatchIdx[13] = hes[2]->flip()->index + vertexOffset;
+	curPatchIdx[8] = hes[3]->index + vertexOffset;
+	curPatchIdx[4] = hes[3]->flip()->index + vertexOffset;
+
+	curPatchIdx[5] = firstFaceId;
+	curPatchIdx[6] = firstFaceId + 1;
+	curPatchIdx[10] = firstFaceId + 2;
+	curPatchIdx[9] = firstFaceId + 3;
+}
+
+void SubdMesh::computeQuadGregoryPatch(SizeType fid, const GeomContext &context)
+{
+	std::array<const HDS::HalfEdge*, 4> hes{ mHDSMesh->heFromFace(fid) };
+	hes[1] = hes[0]->next();
+	hes[2] = hes[1]->next();
+	hes[3] = hes[2]->next();
+
+	const SizeType* vids = &mFaceIndices[mFaceIdOffset[fid]];
+
+	assert(hes[0]->vid == vids[0]);
+
+	SizeType firstFaceId = mPatchVertexBuffer.size();
+	mPatchVertexBuffer.resize(firstFaceId + 8);
+	Point3f* InteriorFacePoint = &mPatchVertexBuffer[firstFaceId];
+	
+	const uint32_t firstPatchId = mQuadGregoryPatchIndices.size();
+	mQuadGregoryPatchIndices.resize(firstPatchId + sQuadGregoryPatchSize);
+	
+	SizeType* curPatchIdx = &mQuadGregoryPatchIndices[firstPatchId];
+	curPatchIdx[0] = vids[0];
+	curPatchIdx[5] = vids[1];
+	curPatchIdx[10] = vids[2];
+	curPatchIdx[15] = vids[3];
+
+	SizeType vertexOffset = mVerts.size();
+	curPatchIdx[1] = hes[0]->index + vertexOffset;
+	curPatchIdx[7] = hes[0]->flip()->index + vertexOffset;
+	curPatchIdx[6] = hes[1]->index + vertexOffset;
+	curPatchIdx[12] = hes[1]->flip()->index + vertexOffset;
+	curPatchIdx[11] = hes[2]->index + vertexOffset;
+	curPatchIdx[17] = hes[2]->flip()->index + vertexOffset;
+	curPatchIdx[16] = hes[3]->index + vertexOffset;
+	curPatchIdx[2] = hes[3]->flip()->index + vertexOffset;
+
+	curPatchIdx[3] = firstFaceId;
+	curPatchIdx[4] = firstFaceId + 1;
+	curPatchIdx[8] = firstFaceId + 2;
+	curPatchIdx[9] = firstFaceId + 3;
+	curPatchIdx[13] = firstFaceId + 4;
+	curPatchIdx[14] = firstFaceId + 5;
+	curPatchIdx[18] = firstFaceId + 6;
+	curPatchIdx[19] = firstFaceId + 7;
+
+	// Compute Face Points f0+ f0-
+	for (SizeType i = 0; i < 4; i++)
+	{
+		SizeType prevIdx = i == 0 ? 3 : i - 1;
+		SizeType nextIdx = i == 3 ? 0 : i + 1;
+		// calculate c0,c1,c2
+		SizeType curVid = vids[i];
+		SizeType prevVid = vids[prevIdx];
+		SizeType nextVid = vids[nextIdx];
+		auto c0 = Gregory::cosPi(2, context.mVertexValence[curVid]);
+		auto c1 = Gregory::cosPi(2, context.mVertexValence[nextVid]);
+		auto c2 = Gregory::cosPi(2, context.mVertexValence[prevVid]);
+
+		/*const int dFaceType = 3;// Varies
+		const Float inv_d = 1.0 / dFaceType;*/
+		const SizeType subPatchSize = 5;
+		SizeType subPatchOffset = i * subPatchSize;
+		SizeType prevSubPatchOfs = prevIdx * subPatchSize;
+		SizeType nextSubPatchOfs = nextIdx * subPatchSize;
+
+		const Point3f &curP0 = mPatchVertexBuffer[curVid];
+		const Point3f &e0plus = mPatchVertexBuffer[curPatchIdx[subPatchOffset + 1]];
+		const Point3f &e0minus = mPatchVertexBuffer[curPatchIdx[subPatchOffset + 2]];
+		const Point3f &e1minus = mPatchVertexBuffer[curPatchIdx[nextSubPatchOfs + 2]];
+		const Point3f &e3plus = mPatchVertexBuffer[curPatchIdx[prevSubPatchOfs + 1]];
+
+		const Point3f &m_i = context.mEdgeMiddle[hes[i]->index];
+		const Point3f &m_im1 = context.mEdgeMiddle[hes[i]->rotCW()->index];
+		const Point3f &m_ip1 = context.mEdgeMiddle[hes[prevIdx]->index];
+		const Point3f &m_ip2 = context.mEdgeMiddle[hes[prevIdx]->flip()->prev()->index];
+
+		const Point3f &fc_i = context.mFaceCenter[fid];
+		const Point3f &fc_ip1 = context.mFaceCenter[hes[i]->rotCCW()->fid];
+		const Point3f &fc_im1 = context.mFaceCenter[hes[i]->flip()->fid];
+		// f+
+		// get r+
+		const Float invThree = 1.0 / 3.0;
+		Vector3f r_plus = (m_ip1 - m_im1) * invThree + (fc_i - fc_im1) * 2.0 * invThree;
+
+		InteriorFacePoint[i * 2] = (c1 * curP0
+									+ (Gregory::cQuadFaceD - 2 * c0 - c1) * e0plus
+									+ 2 * c0 * e1minus
+									+ r_plus) * Gregory::cQuadFaceInvD;
+		// f-
+		// get r-
+		Vector3f r_minus = (m_i - m_ip2) * invThree + (fc_i - fc_ip1) * 2.0 * invThree;
+
+		InteriorFacePoint[i * 2 + 1] = (c2 * curP0
+										+ (Gregory::cQuadFaceD - 2 * c0 - c2) * e0minus
+										+ 2 * c0 * e3plus
+										+ r_minus) * Gregory::cQuadFaceInvD;
+	}
+}
+
+void SubdMesh::computeTriGregoryPatch(SizeType fid, const GeomContext &context)
+{
+	std::array<const HDS::HalfEdge*, 3> hes{ mHDSMesh->heFromFace(fid) };
+	hes[1] = hes[0]->next();
+	hes[2] = hes[1]->next();
+
+	const SizeType* vids = &mFaceIndices[mFaceIdOffset[fid]];
+
+	assert(hes[0]->vid == vids[0]);
+
+	SizeType firstFaceId = mPatchVertexBuffer.size();
+	mPatchVertexBuffer.resize(firstFaceId + 6);
+	Point3f* InteriorFacePoint = &mPatchVertexBuffer[firstFaceId];
+
+	size_t firstPatchId = mTriGregoryPatchIndices.size();
+	mTriGregoryPatchIndices.resize(firstPatchId + sQuadBezierPatchSize);
+
+	SizeType* curPatchIdx = &mQuadGregoryPatchIndices[firstPatchId];
+	curPatchIdx[0] = vids[0];
+	curPatchIdx[5] = vids[1];
+	curPatchIdx[10] = vids[2];
+
+	SizeType vertexOffset = mVerts.size();
+	curPatchIdx[1] = hes[0]->index + vertexOffset;
+	curPatchIdx[7] = hes[0]->flip()->index + vertexOffset;
+	curPatchIdx[6] = hes[1]->index + vertexOffset;
+	curPatchIdx[12] = hes[1]->flip()->index + vertexOffset;
+	curPatchIdx[11] = hes[2]->index + vertexOffset;
+	curPatchIdx[2] = hes[2]->flip()->index + vertexOffset;
+
+	curPatchIdx[3] = firstFaceId;
+	curPatchIdx[4] = firstFaceId + 1;
+	curPatchIdx[8] = firstFaceId + 2;
+	curPatchIdx[9] = firstFaceId + 3;
+	curPatchIdx[13] = firstFaceId + 4;
+	curPatchIdx[14] = firstFaceId + 5;
+
+	// Compute Face Points f0+ f0-
+	for (SizeType i = 0; i < 3; i++)
+	{
+		SizeType prevIdx = i == 0 ? 2 : i - 1;
+		SizeType nextIdx = i == 2 ? 0 : i + 1;
+		// calculate c0,c1,c2
+		SizeType curVid = vids[i];
+		SizeType prevVid = vids[prevIdx];
+		SizeType nextVid = vids[nextIdx];
+		auto c0 = Gregory::cosPi(2, context.mVertexValence[curVid]);
+		auto c1 = Gregory::cosPi(2, context.mVertexValence[nextVid]);
+		auto c2 = Gregory::cosPi(2, context.mVertexValence[prevVid]);
+
+		const SizeType subPatchSize = 5;
+		SizeType subPatchOffset = i * subPatchSize;
+		SizeType prevSubPatchOfs = prevIdx * subPatchSize;
+		SizeType nextSubPatchOfs = nextIdx * subPatchSize;
+
+		const Point3f &curP0 = mPatchVertexBuffer[curVid];
+		const Point3f &e0plus = mPatchVertexBuffer[curPatchIdx[subPatchOffset + 1]];
+		const Point3f &e0minus = mPatchVertexBuffer[curPatchIdx[subPatchOffset + 2]];
+		const Point3f &e1minus = mPatchVertexBuffer[curPatchIdx[nextSubPatchOfs + 2]];
+		const Point3f &e3plus = mPatchVertexBuffer[curPatchIdx[prevSubPatchOfs + 1]];
+
+		const Point3f &m_i = context.mEdgeMiddle[hes[i]->index];
+		const Point3f &m_im1 = context.mEdgeMiddle[hes[i]->rotCW()->index];
+		const Point3f &m_ip1 = context.mEdgeMiddle[hes[prevIdx]->index];
+		const Point3f &m_ip2 = context.mEdgeMiddle[hes[prevIdx]->flip()->prev()->index];
+
+		const Point3f &fc_i = context.mFaceCenter[fid];
+		const Point3f &fc_ip1 = context.mFaceCenter[hes[i]->rotCCW()->fid];
+		const Point3f &fc_im1 = context.mFaceCenter[hes[i]->flip()->fid];
+		// f+
+		// get r+
+		const Float invThree = 1.0 / 3.0;
+		Vector3f r_plus = (m_ip1 - m_im1) * invThree + (fc_i - fc_im1) * 2.0 * invThree;
+
+		InteriorFacePoint[i * 2] = (c1 * curP0
+									+ (Gregory::cTriFaceD - 2 * c0 - c1) * e0plus
+									+ 2 * c0 * e1minus
+									+ r_plus) * Gregory::cTriFaceInvD;
+		// f-
+		// get r-
+		Vector3f r_minus = (m_i - m_ip2) * invThree + (fc_i - fc_ip1) * 2.0 * invThree;
+
+		InteriorFacePoint[i * 2 + 1] = (c2 * curP0
+										+ (Gregory::cTriFaceD - 2 * c0 - c2) * e0minus
+										+ 2 * c0 * e3plus
+										+ r_minus) * Gregory::cTriFaceInvD;
+	}
+}
+
+#if 0
 
 void SubdMesh::evalGregory() const
 {
@@ -512,8 +677,7 @@ void SubdMesh::evalGregory() const
 
 	auto bilinear_pos = [](const Point3f &p0, const Point3f &p1,
 						   const Point3f &p2, const Point3f &p3,
-						   float s, float t)
-	{
+						   float s, float t) {
 		// id3 -- id2
 		//  |      |
 		// id0 -- id1
@@ -531,10 +695,10 @@ void SubdMesh::evalGregory() const
 			if ((u == 0 || u == 1) && (v == 0 || v == 1))
 			{
 				ret.push_back(bilinear_pos(
-					gregory_patch[0],
-					gregory_patch[5],
-					gregory_patch[10],
-					gregory_patch[15],
+					mGregoryPatch[0],
+					mGregoryPatch[5],
+					mGregoryPatch[10],
+					mGregoryPatch[15],
 					u, v
 				));
 			}
@@ -542,17 +706,17 @@ void SubdMesh::evalGregory() const
 			{
 				// Sample on grid
 				// Face Points
-				Point3f f0 = (u * gregory_patch[3]
-							  + v * gregory_patch[4])
+				Point3f f0 = (u * mGregoryPatch[3]
+							  + v * mGregoryPatch[4])
 					/ (u + v);
-				Point3f f1 = ((1 - u) * gregory_patch[9]
-							  + v  * gregory_patch[8])
+				Point3f f1 = ((1 - u) * mGregoryPatch[9]
+							  + v  * mGregoryPatch[8])
 					/ (1 - u + v);
-				Point3f f2 = ((1 - u) * gregory_patch[13]
-							  + (1 - v) * gregory_patch[14])
+				Point3f f2 = ((1 - u) * mGregoryPatch[13]
+							  + (1 - v) * mGregoryPatch[14])
 					/ (2 - u - v);
-				Point3f f3 = (u * gregory_patch[19]
-							  + (1 - v) * gregory_patch[18])
+				Point3f f3 = (u * mGregoryPatch[19]
+							  + (1 - v) * mGregoryPatch[18])
 					/ (1 + u - v);
 
 				Point3f p[9];
@@ -561,49 +725,49 @@ void SubdMesh::evalGregory() const
 				// 3 -- 4 -- 5
 				// |    |    |
 				// 0 -- 1 -- 2
-				p[0] = bilinear_pos(gregory_patch[0],
-									gregory_patch[1],
+				p[0] = bilinear_pos(mGregoryPatch[0],
+									mGregoryPatch[1],
 									f0,
-									gregory_patch[2],
+									mGregoryPatch[2],
 									u, v);
-				p[1] = bilinear_pos(gregory_patch[1],
-									gregory_patch[7],
+				p[1] = bilinear_pos(mGregoryPatch[1],
+									mGregoryPatch[7],
 									f1,
 									f0,
 									u, v);
-				p[2] = bilinear_pos(gregory_patch[7],
-									gregory_patch[5],
-									gregory_patch[6],
+				p[2] = bilinear_pos(mGregoryPatch[7],
+									mGregoryPatch[5],
+									mGregoryPatch[6],
 									f1,
 									u, v);
 
-				p[3] = bilinear_pos(gregory_patch[2],
+				p[3] = bilinear_pos(mGregoryPatch[2],
 									f0,
 									f3,
-									gregory_patch[16],
+									mGregoryPatch[16],
 									u, v);
 				p[4] = bilinear_pos(f0, f1, f2, f3,
 									u, v);
 				p[5] = bilinear_pos(f1,
-									gregory_patch[6],
-									gregory_patch[12],
+									mGregoryPatch[6],
+									mGregoryPatch[12],
 									f2,
 									u, v);
 
-				p[6] = bilinear_pos(gregory_patch[16],
+				p[6] = bilinear_pos(mGregoryPatch[16],
 									f3,
-									gregory_patch[17],
-									gregory_patch[15],
+									mGregoryPatch[17],
+									mGregoryPatch[15],
 									u, v);
 				p[7] = bilinear_pos(f3,
 									f2,
-									gregory_patch[11],
-									gregory_patch[17],
+									mGregoryPatch[11],
+									mGregoryPatch[17],
 									u, v);
 				p[8] = bilinear_pos(f2,
-									gregory_patch[12],
-									gregory_patch[10],
-									gregory_patch[11],
+									mGregoryPatch[12],
+									mGregoryPatch[10],
+									mGregoryPatch[11],
 									u, v);
 
 				// 2 -- 3
@@ -636,4 +800,7 @@ void SubdMesh::evalGregory() const
 	}
 
 	fclose(fp);
+}
+#endif
+
 }
