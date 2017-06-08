@@ -7,7 +7,7 @@ OglViewer::OglViewer(QWidget* parent)
 		Kaguya::Point3f(0, 1, 0),
 		Kaguya::Vector3f(0, 1, 0),
 		width() / float(height())))
-	, model_mesh(new SubdMesh("scene/obj/dragon.obj"))
+	, model_mesh(new SubdMesh("scene/obj/pyramid.obj"))
 {
 }
 
@@ -66,6 +66,7 @@ void OglViewer::initializeGL()
 	bindPatchVertex();
 	bindBezierPatch();
 	bindQuadGregoryPatch();
+	bindTriGregoryPatch();
 }
 
 void OglViewer::bindMesh()
@@ -215,8 +216,8 @@ void OglViewer::paintGL()
 	makeCurrent();
 
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	glEnable(GL_CULL_FACE);
-	glCullFace(GL_BACK); // cull back face
+	//glEnable(GL_CULL_FACE);
+	//glCullFace(GL_BACK); // cull back face
 	if (!draw_wireframe)
 	{
 		//glEnable(GL_CULL_FACE);

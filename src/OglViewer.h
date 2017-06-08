@@ -56,7 +56,7 @@ private:
 	// OpenGL variables
 	int mDisplayMode = 0;
 
-	GLfloat mTessSeg = 4;
+	GLfloat mTessSeg = 16;
 	bool mDrawCage = false;
 	bool draw_wireframe = false;
 

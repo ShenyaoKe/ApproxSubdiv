@@ -25,7 +25,7 @@ SubdMesh::SubdMesh(const std::string &filename)
 										mFaceSideCount,
 										mFaceIdOffset));
 		process();
-#if 0
+#if 1
 		savePatch();
 #endif
 		//evalGregory();
@@ -128,7 +128,7 @@ void SubdMesh::savePatch() const
 	{
 		fprintf(fp, "g GregoryPatchID%04d]\n", i);
 		const SizeType* idx = &mQuadGregoryPatchIndices[i * sQuadGregoryPatchSize];
-		/*fprintf(fp,
+		fprintf(fp,
 				// corner
 				"f %d %d %d %d %d\n"
 				"f %d %d %d %d %d\n"
@@ -152,17 +152,37 @@ void SubdMesh::savePatch() const
 				idx[16] + 1, idx[2] + 1, idx[4] + 1, idx[18] + 1,
 
 				idx[3] + 1, idx[9] + 1, idx[8] + 1, idx[14] + 1,
-				idx[13] + 1, idx[19] + 1, idx[18] + 1, idx[4] + 1);*/
+				idx[13] + 1, idx[19] + 1, idx[18] + 1, idx[4] + 1);
+	}
+
+
+	fprintf(fp, "o [TriGregoryPatch]\n");
+	for (int i = 0; i < mTriGregoryPatchIndices.size() / sTriGregoryPatchSize; i++)
+	{
+		fprintf(fp, "g TriGregoryPatchID%04d]\n", i);
+		const SizeType* idx = &mTriGregoryPatchIndices[i * sTriGregoryPatchSize];
 		fprintf(fp,
 				// corner
-				"f %d %d %d %d %d %d %d %d %d %d %d %d\n"
-				"f %d %d %d %d %d %d %d %d\n",
-				idx[0] + 1, idx[1] + 1, idx[7] + 1, idx[5] + 1, idx[6] + 1,
-				idx[12] + 1, idx[10] + 1, idx[11] + 1, idx[17] + 1, idx[15] + 1,
-				idx[16] + 1, idx[2] + 1,
-				//
-				idx[3] + 1, idx[9] + 1, idx[8] + 1, idx[14] + 1, idx[13] + 1,
-				idx[19] + 1, idx[18] + 1, idx[4] + 1);
+				"f %d %d %d %d %d\n"
+				"f %d %d %d %d %d\n"
+				"f %d %d %d %d %d\n"
+				// edge fill
+				"f %d %d %d %d\n"
+				"f %d %d %d %d\n"
+				"f %d %d %d %d\n"
+				// face fill
+				"f %d %d %d %d %d %d\n",
+				idx[0] + 1, idx[1] + 1, idx[3] + 1, idx[4] + 1, idx[2] + 1,
+				idx[5] + 1, idx[6] + 1, idx[8] + 1, idx[9] + 1, idx[7] + 1,
+				idx[10] + 1, idx[11] + 1, idx[13] + 1, idx[14] + 1, idx[12] + 1,
+
+				idx[1] + 1, idx[7] + 1, idx[9] + 1, idx[3] + 1,
+				idx[6] + 1, idx[12] + 1, idx[14] + 1, idx[8] + 1,
+				idx[11] + 1, idx[2] + 1, idx[4] + 1, idx[13] + 1,
+
+				idx[3] + 1, idx[9] + 1,
+				idx[8] + 1, idx[14] + 1,
+				idx[13] + 1, idx[4] + 1);
 	}
 
 	fclose(fp);
