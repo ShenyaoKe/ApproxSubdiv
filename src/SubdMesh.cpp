@@ -7,6 +7,7 @@ namespace Kaguya
 
 SubdMesh::SubdMesh(const std::string &filename)
 {
+#if 1
 	ObjBuffers tmpBuffers;
 	if (ObjLoader::loadRawBuffers(tmpBuffers, filename))
 	{
@@ -25,15 +26,124 @@ SubdMesh::SubdMesh(const std::string &filename)
 										mFaceSideCount,
 										mFaceIdOffset));
 		process();
+	}
+#else
+	hack();
+#endif
 #if 1
 		savePatch();
 #endif
-		//evalGregory();
-	}
 }
 
 SubdMesh::~SubdMesh()
 {
+}
+
+void SubdMesh::hack()
+{
+	mVerts = { { 0, 0, 0 }, { 1, 0, 0 }, { 0, 0, 1 }, { 0, 1, 0 } };
+	vector<Point3f> edgeMiddles = {
+		{0.5f, 0, 0}, {0, 0, 0.5f}, {0, 0.5f, 0},
+		{0.5f, 0, 0.5f}, {0, 0.5f, 0.5f}, {0.5f, 0.5f, 0}
+	};
+	vector<Point3f> faceCenters = {
+		(mVerts[0] + mVerts[1] + mVerts[2]) / 3,
+		(mVerts[0] + mVerts[2] + mVerts[3]) / 3,
+		(mVerts[0] + mVerts[1] + mVerts[3]) / 3,
+		(mVerts[1] + mVerts[2] + mVerts[3]) / 3
+	};
+
+	auto p_func = [&] (uint32_t m0, uint32_t m1, uint32_t m2,
+					   uint32_t c0, uint32_t c1, uint32_t c2) {
+		return (edgeMiddles[m0] + edgeMiddles[m1] + edgeMiddles[m2]
+				+ faceCenters[c0] + faceCenters[c1] + faceCenters[c2]) / 6.0f;
+	};
+	vector<Point3f> p = {
+		p_func(0,1,2,0,1,2),
+		p_func(0,3,5,0,2,3),
+		p_func(1,3,4,0,1,3),
+		p_func(2,4,5,1,2,3)
+	};
+	auto e_func = [&] (uint32_t p0,
+					   uint32_t m0, uint32_t m1, uint32_t m2,
+					   uint32_t c0, uint32_t c1, uint32_t c2) {
+		double delta = 1.0 / sqrt(4 + cos(M_PI / 3.0)*cos(M_PI / 3.0));
+		Point3f q = 2.0 / 3.0 * (
+			(1 - delta*cos(M_PI / 3.0))*cos(2 * M_PI * 0 / 3.0)*edgeMiddles[m0] +
+			2 * delta*cos((2 * 0 + 1)*M_PI / 3.0)*faceCenters[c0] +
+			(1 - delta*cos(M_PI / 3.0))*cos(2 * M_PI * 1 / 3.0)*edgeMiddles[m1] +
+			2 * delta*cos((2 * 1 + 1)*M_PI / 3.0)*faceCenters[c1] +
+			(1 - delta*cos(M_PI / 3.0))*cos(2 * M_PI * 2 / 3.0)*edgeMiddles[m2] +
+			2 * delta*cos((2 * 2 + 1)*M_PI / 3.0)*faceCenters[c2]
+			);
+
+		double r_lambda = 0.0625*(5 + cos(M_PI * 2 / 3.0)
+								  + cos(M_PI / 3.0)
+								  * sqrt(18.0 + 2.0*cos(M_PI * 2 / 3.0)));
+		return p[p0] + 2.0 / 3.0*r_lambda*q;
+
+	};
+	vector<Point3f> e = {
+		e_func(0,0,1,2,0,1,2), e_func(1,0,5,3,2,3,0),
+		e_func(0,1,2,0,1,2,0), e_func(2,1,3,4,0,3,1),
+		e_func(0,2,0,1,2,0,1), e_func(3,2,4,5,1,3,2),
+		e_func(2,3,4,1,3,1,0), e_func(1,3,0,5,0,2,3),
+		e_func(2,4,1,3,1,0,3), e_func(3,4,5,2,3,2,1),
+		e_func(3,5,4,2,3,1,2), e_func(1,5,3,0,3,0,2)
+	};
+
+	auto f_func = [&] (uint32_t p0,
+					   uint32_t m_ip1, uint32_t m_im1,
+					   uint32_t e_p, uint32_t e_m,
+					   uint32_t ci, uint32_t ci_1) {
+		Vector3f r = (edgeMiddles[m_ip1] - edgeMiddles[m_im1]) / 3.0 +
+			(faceCenters[ci] - faceCenters[ci_1]) * 2.0 / 3.0;
+		double coef = -0.5;
+		double d = 4;
+		return 1 / d * (coef*p[p0] + (d - 2.0*coef - coef) * e[e_p] +
+						2.0*coef*e[e_m] + r);
+	};
+	vector<Point3f> f = {
+		f_func(0,0,2,2,3,0,1),f_func(2,3,4,3,2,0,1),
+		f_func(2,1,4,6,7,0,3),f_func(1,0,5,7,6,0,3),
+		f_func(1,3,5,1,0,0,2),f_func(0,1,2,0,1,0,2),
+		//////////////////////////////////////////////////////////////////////////
+		f_func(0,1,0,4,5,1,2),f_func(3,4,5,5,4,1,2),
+		f_func(3,2,5,9,8,1,3),f_func(2,1,3,8,9,1,3),
+		f_func(2,4,3,3,2,1,0),f_func(0,2,0,2,3,1,0),
+		//////////////////////////////////////////////////////////////////////////
+		f_func(0,2,1,0,1,2,0),f_func(1,5,3,1,0,2,0),
+		f_func(1,0,3,11,10,2,3),f_func(3,2,4,10,11,2,3),
+		f_func(3,5,4,5,4,2,1),f_func(0,0,1,4,5,2,1),
+		//////////////////////////////////////////////////////////////////////////
+		f_func(2,3,1,8,9,3,1),f_func(3,5,2,9,8,3,1),
+		f_func(3,4,2,10,11,3,2),f_func(1,3,0,11,10,3,2),
+		f_func(1,5,0,7,6,3,0),f_func(2,4,1,6,7,3,0)
+	};
+
+	mPatchVertexBuffer.insert(mPatchVertexBuffer.end(), p.begin(), p.end());
+	uint32_t e_ofs = mPatchVertexBuffer.size();
+	mPatchVertexBuffer.insert(mPatchVertexBuffer.end(), e.begin(), e.end());
+	uint32_t f_ofs = mPatchVertexBuffer.size();
+	mPatchVertexBuffer.insert(mPatchVertexBuffer.end(), f.begin(), f.end());
+
+	mTriGregoryPatchIndices = {
+		0, 0 + e_ofs, 2 + e_ofs, 5 + f_ofs, 0 + f_ofs,
+		1, 7 + e_ofs, 1 + e_ofs, 3 + f_ofs, 4 + f_ofs,
+		2, 3 + e_ofs, 6 + e_ofs, 1 + f_ofs, 2 + f_ofs,
+		//////////////////////////////////////////////////////////////////////////
+		0, 2 + e_ofs, 4 + e_ofs, 11 + f_ofs, 6 + f_ofs,
+		2, 8 + e_ofs, 3 + e_ofs, 9 + f_ofs, 10 + f_ofs,
+		3, 5 + e_ofs, 9 + e_ofs, 7 + f_ofs, 8 + f_ofs,
+		//////////////////////////////////////////////////////////////////////////
+		0, 4 + e_ofs, 0 + e_ofs, 17 + f_ofs, 12 + f_ofs,
+		3, 10 + e_ofs, 5 + e_ofs, 15 + f_ofs, 16 + f_ofs,
+		1, 1 + e_ofs, 11 + e_ofs, 13 + f_ofs, 14 + f_ofs,
+		//////////////////////////////////////////////////////////////////////////
+		1, 11 + e_ofs, 7 + e_ofs, 21 + f_ofs, 22 + f_ofs,
+		3, 9 + e_ofs, 10 + e_ofs, 19 + f_ofs, 20 + f_ofs,
+		2, 6 + e_ofs, 8 + e_ofs, 23 + f_ofs, 18 + f_ofs,
+	};
 }
 
 void SubdMesh::exportIndexedVBO(vector<Float>* vtx_array,
@@ -355,7 +465,7 @@ void SubdMesh::computeCornerPoints(const GeomContext &context)
 		if (valence == 2 || boundaryVerts.find(i) != boundaryVerts.end())
 		{
 			// TODO: Valence-2 vertex should be handled properly
-			mPatchVertexBuffer[i] += mVerts[i] * 4;
+			mPatchVertexBuffer[i] = mVerts[i] * 4;
 			do
 			{
 				if (curHE->isBoundary)
@@ -393,17 +503,35 @@ void SubdMesh::computeEdgePoints(const GeomContext &context)
 	Point3f* edgePoints = &mPatchVertexBuffer[initSize];
 	for (auto &he : mHDSMesh->halfedges)
 	{
-		Point3f q;
 		SizeType valence = context.mVertexValence[he.vid];
-		const HDS::HalfEdge* curHE = &he;
-		for (SizeType i = 0; i < valence; i++)
+		if (he.isBoundary)
 		{
-			q += Gregory::edgeP_coefMi(i, valence) * context.mEdgeMiddle[curHE->index] +
-				Gregory::edgeP_coefCi(i, valence) * context.mFaceCenter[curHE->fid];
-			curHE = curHE->rotCCW();
+			constexpr Float invThree = 1.0 / 3.0;
+			edgePoints[he.index] = (mVerts[he.vid] * 2 + mVerts[he.flip()->vid]) * invThree;
 		}
-		q *= (Gregory::lamda_valence(valence) * cFourOverThree / Float(valence));
-		edgePoints[he.index] = q + mPatchVertexBuffer[he.vid];
+		else if (valence == 2)
+		{
+			// TODO: Valence 2 edge
+		}
+		else
+		{
+			// TODO: Piecewise boundary curves
+			Point3f q;
+			SizeType validFaceCount = 0;
+			const HDS::HalfEdge* curHE = &he;
+			for (SizeType i = 0; i < valence; i++)
+			{
+				if (!curHE->isBoundary)
+				{
+					q += Gregory::edgeP_coefMi(i, valence) * context.mEdgeMiddle[curHE->index] +
+						Gregory::edgeP_coefCi(i, valence) * context.mFaceCenter[curHE->fid];
+					validFaceCount++;
+				}
+				curHE = curHE->rotCCW();
+			}
+			q *= (Gregory::lamda_valence(validFaceCount) * cFourOverThree / Float(validFaceCount));
+			edgePoints[he.index] = q + mPatchVertexBuffer[he.vid];
+		}
 	}
 }
 
@@ -538,56 +666,95 @@ void SubdMesh::computeQuadGregoryPatch(SizeType fid, const GeomContext &context)
 	curPatchIdx[19] = firstFaceId + 7;
 
 	// Compute Face Points f0+ f0-
-	for (SizeType i = 0; i < 4; i++)
+	for (SizeType curIdx = 0; curIdx < 4; curIdx++)
 	{
-		SizeType prevIdx = i == 0 ? 3 : i - 1;
-		SizeType nextIdx = i == 3 ? 0 : i + 1;
-		// calculate c0,c1,c2
-		SizeType curVid = vids[i];
+		SizeType prevIdx = curIdx == 0 ? 3 : curIdx - 1;
+		SizeType nextIdx = curIdx == 3 ? 0 : curIdx + 1;
+
+		SizeType curVid = vids[curIdx];
 		SizeType prevVid = vids[prevIdx];
 		SizeType nextVid = vids[nextIdx];
-		auto c0 = Gregory::cosPi(2, context.mVertexValence[curVid]);
-		auto c1 = Gregory::cosPi(2, context.mVertexValence[nextVid]);
-		auto c2 = Gregory::cosPi(2, context.mVertexValence[prevVid]);
 
-		/*const int dFaceType = 3;// Varies
-		const Float inv_d = 1.0 / dFaceType;*/
 		const SizeType subPatchSize = 5;
-		SizeType subPatchOffset = i * subPatchSize;
+		SizeType subPatchOffset = curIdx * subPatchSize;
 		SizeType prevSubPatchOfs = prevIdx * subPatchSize;
 		SizeType nextSubPatchOfs = nextIdx * subPatchSize;
 
-		const Point3f &curP0 = mPatchVertexBuffer[curVid];
-		const Point3f &e0plus = mPatchVertexBuffer[curPatchIdx[subPatchOffset + 1]];
-		const Point3f &e0minus = mPatchVertexBuffer[curPatchIdx[subPatchOffset + 2]];
-		const Point3f &e1minus = mPatchVertexBuffer[curPatchIdx[nextSubPatchOfs + 2]];
-		const Point3f &e3plus = mPatchVertexBuffer[curPatchIdx[prevSubPatchOfs + 1]];
 
-		const Point3f &m_i = context.mEdgeMiddle[hes[i]->index];
-		const Point3f &m_im1 = context.mEdgeMiddle[hes[i]->rotCW()->index];
-		const Point3f &m_ip1 = context.mEdgeMiddle[hes[prevIdx]->index];
-		const Point3f &m_ip2 = context.mEdgeMiddle[hes[prevIdx]->flip()->prev()->index];
-
-		const Point3f &fc_i = context.mFaceCenter[fid];
-		const Point3f &fc_ip1 = context.mFaceCenter[hes[i]->rotCCW()->fid];
-		const Point3f &fc_im1 = context.mFaceCenter[hes[i]->flip()->fid];
 		// f+
-		// get r+
-		const Float invThree = 1.0 / 3.0;
-		Vector3f r_plus = (m_ip1 - m_im1) * invThree + (fc_i - fc_im1) * 2.0 * invThree;
+		if (hes[curIdx]->isBoundary)
+		{
+			SizeType diagIdx = curIdx == 2 ? 0 : curIdx + 2;
+			SizeType diagVid = vids[diagIdx];
 
-		InteriorFacePoint[i * 2] = (c1 * curP0
-									+ (Gregory::cQuadFaceD - 2 * c0 - c1) * e0plus
-									+ 2 * c0 * e1minus
-									+ r_plus) * Gregory::cQuadFaceInvD;
+			const Point3f &curP = mVerts[curVid];
+			const Point3f &nearP1 = mVerts[nextVid];
+			const Point3f &nearP2 = mVerts[prevVid];
+			const Point3f &diagP = mVerts[diagVid];
+
+			InteriorFacePoint[curIdx * 2] =
+				computeBoundaryQuadFacePoint(curP, nearP1, nearP2, diagP,
+											 context.mVertexValence[curVid]);
+		}
+		else
+		{
+			const Point3f &curP0 = mPatchVertexBuffer[curVid];
+			const Point3f &e0plus = mPatchVertexBuffer[curPatchIdx[subPatchOffset + 1]];
+			const Point3f &e1minus = mPatchVertexBuffer[curPatchIdx[nextSubPatchOfs + 2]];
+
+			const Point3f &m_i = context.mEdgeMiddle[hes[curIdx]->index];
+			const Point3f &m_im1 = context.mEdgeMiddle[hes[curIdx]->rotCW()->index];
+			const Point3f &m_ip1 = context.mEdgeMiddle[hes[prevIdx]->index];
+			const Point3f &m_ip2 = context.mEdgeMiddle[hes[prevIdx]->flip()->prev()->index];
+
+			const Point3f &fc_i = context.mFaceCenter[fid];
+			const Point3f &fc_im1 = context.mFaceCenter[hes[curIdx]->flip()->fid];
+
+			InteriorFacePoint[curIdx * 2] =
+				computeQuadFacePoint(curP0,
+									 m_ip1, m_im1,
+									 fc_i, fc_im1,
+									 e0plus, e1minus,
+									 context.mVertexValence[curVid],
+									 context.mVertexValence[nextVid]);
+
+		}
 		// f-
-		// get r-
-		Vector3f r_minus = (m_i - m_ip2) * invThree + (fc_i - fc_ip1) * 2.0 * invThree;
+		if (hes[prevIdx]->isBoundary)
+		{
+			SizeType diagIdx = curIdx == 2 ? 0 : curIdx + 2;
+			SizeType diagVid = vids[diagIdx];
 
-		InteriorFacePoint[i * 2 + 1] = (c2 * curP0
-										+ (Gregory::cQuadFaceD - 2 * c0 - c2) * e0minus
-										+ 2 * c0 * e3plus
-										+ r_minus) * Gregory::cQuadFaceInvD;
+			const Point3f &curP = mVerts[curVid];
+			const Point3f &nearP1 = mVerts[nextVid];
+			const Point3f &nearP2 = mVerts[prevVid];
+			const Point3f &diagP = mVerts[diagVid];
+
+			InteriorFacePoint[curIdx * 2 + 1] =
+				computeBoundaryQuadFacePoint(curP, nearP1, nearP2, diagP,
+											 context.mVertexValence[curVid]);
+		}
+		else
+		{
+			const Point3f &curP0 = mPatchVertexBuffer[curVid];
+			const Point3f &e0minus = mPatchVertexBuffer[curPatchIdx[subPatchOffset + 2]];
+			const Point3f &e3plus = mPatchVertexBuffer[curPatchIdx[prevSubPatchOfs + 1]];
+
+			const Point3f &m_i = context.mEdgeMiddle[hes[curIdx]->index];
+			const Point3f &m_ip2 = context.mEdgeMiddle[hes[prevIdx]->flip()->prev()->index];
+
+			const Point3f &fc_i = context.mFaceCenter[fid];
+			const Point3f &fc_ip1 = context.mFaceCenter[hes[curIdx]->rotCCW()->fid];
+			// f-
+			InteriorFacePoint[curIdx * 2 + 1] =
+				computeQuadFacePoint(curP0,
+									 m_i, m_ip2,
+									 fc_i, fc_ip1,
+									 e0minus, e3plus,
+									 context.mVertexValence[curVid],
+									 context.mVertexValence[prevVid]);
+
+		}
 	}
 }
 
@@ -650,7 +817,7 @@ void SubdMesh::computeTriGregoryPatch(SizeType fid, const GeomContext &context)
 		const Point3f &e0plus = mPatchVertexBuffer[curPatchIdx[subPatchOffset + 1]];
 		const Point3f &e0minus = mPatchVertexBuffer[curPatchIdx[subPatchOffset + 2]];
 		const Point3f &e1minus = mPatchVertexBuffer[curPatchIdx[nextSubPatchOfs + 2]];
-		const Point3f &e3plus = mPatchVertexBuffer[curPatchIdx[prevSubPatchOfs + 1]];
+		const Point3f &e2plus = mPatchVertexBuffer[curPatchIdx[prevSubPatchOfs + 1]];
 
 		const Point3f &m_i = context.mEdgeMiddle[hes[i]->index];
 		const Point3f &m_im1 = context.mEdgeMiddle[hes[i]->rotCW()->index];
@@ -675,11 +842,34 @@ void SubdMesh::computeTriGregoryPatch(SizeType fid, const GeomContext &context)
 
 		InteriorFacePoint[i * 2 + 1] = (c2 * curP0
 										+ (Gregory::cTriFaceD - 2 * c0 - c2) * e0minus
-										+ 2 * c0 * e3plus
+										+ 2 * c0 * e2plus
 										+ r_minus) * Gregory::cTriFaceInvD;
 	}
 }
 
+Kaguya::Point3f SubdMesh::computeQuadFacePoint(const Point3f &p0,
+											   const Point3f &m_ip1, const Point3f &m_im1,
+											   const Point3f &fc_i, const Point3f &fc_im1,
+											   const Point3f &edge_near, const Point3f &edge_far,
+											   SizeType valenceNear, SizeType valenceFar) const
+{
+	Float c0 = Gregory::cosPi(2, valenceNear);
+	Float c1 = Gregory::cosPi(2, valenceFar);
+	const Float invThree = 1.0 / 3.0;
+	Vector3f r = (m_ip1 - m_im1) * invThree + (fc_i - fc_im1) * 2.0 * invThree;
+
+	return (c1 * p0 + (Gregory::cQuadFaceD - 2 * c0 - c1) * edge_near
+			+ 2 * c0 * edge_far + r) * Gregory::cQuadFaceInvD;
+}
+
+Kaguya::Point3f SubdMesh::computeBoundaryQuadFacePoint(const Point3f &p0,
+													   const Point3f &nearP1,
+													   const Point3f &nearP2,
+													   const Point3f &diagP,
+													   SizeType valence)
+{
+	return (p0 * valence + 2 * (nearP1 + nearP2) + diagP) / (valence + 5.0f);
+}
 #if 0
 
 void SubdMesh::evalGregory() const

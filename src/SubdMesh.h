@@ -75,7 +75,23 @@ private:
 	void computeQuadGregoryPatch(SizeType fid, const GeomContext &context);
 	void computeTriGregoryPatch(SizeType fid, const GeomContext &context);
 
+	Point3f computeQuadFacePoint(const Point3f &p0,
+								 const Point3f &m_ip1, const Point3f &m_im1,
+								 const Point3f &fc_i, const Point3f &fc_im1,
+								 const Point3f &edge_near, const Point3f &edge_far,
+								 SizeType valenceNear, SizeType valenceFar) const;
+	Point3f computeBoundaryQuadFacePoint(const Point3f &p0,
+										 const Point3f &nearP1,
+										 const Point3f &nearP2,
+										 const Point3f &diagP,
+										 SizeType valence);
+
 	void evalGregory() const;
+
+#ifdef _DEBUG
+	void hack();
+#endif // _DEBUG
+
 
 private:
 

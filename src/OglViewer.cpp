@@ -1,5 +1,9 @@
 #include "OglViewer.h"
 
+const Point3f OglViewer::cRegularPatchColor = Point3f(0.6, 0.8, 1);
+const Point3f OglViewer::cQuadGregoryColor = Point3f(0.8, 0.5, 0.25);
+const Point3f OglViewer::cTriGregoryColor = Point3f(0.4, 0.8, 0.2);
+
 OglViewer::OglViewer(QWidget* parent)
 	: QOpenGLWidget(parent)
 	, mViewCamera(new PerspectiveCamera(
@@ -7,7 +11,7 @@ OglViewer::OglViewer(QWidget* parent)
 		Kaguya::Point3f(0, 1, 0),
 		Kaguya::Vector3f(0, 1, 0),
 		width() / float(height())))
-	, model_mesh(new SubdMesh("scene/obj/pyramid.obj"))
+	, model_mesh(new SubdMesh("scene/obj/dragon.obj"))
 {
 }
 
@@ -251,6 +255,8 @@ void OglViewer::paintGL()
 	glUniformMatrix4fv((*mBezierPatchShader)["proj_matrix"], 1, GL_FALSE,
 					   mViewCamera->cam_to_screen());
 	glUniform1f((*mBezierPatchShader)["segments"], mTessSeg);
+	glUniform3f((*mBezierPatchShader)["Kd"],
+				mBezierPatchColor->x, mBezierPatchColor->y, mBezierPatchColor->z);
 	glPatchParameteri(GL_PATCH_VERTICES, SubdMesh::sQuadBezierPatchSize);
 	glDrawElements(GL_PATCHES, mBezierPatchTrait.count, GL_UNSIGNED_INT, 0);
 
@@ -263,6 +269,8 @@ void OglViewer::paintGL()
 	glUniformMatrix4fv((*mQuadGregoryPatchShader)["proj_matrix"], 1, GL_FALSE,
 					   mViewCamera->cam_to_screen());
 	glUniform1f((*mQuadGregoryPatchShader)["segments"], mTessSeg);
+	glUniform3f((*mQuadGregoryPatchShader)["Kd"],
+				mQuadGregoryColor->x, mQuadGregoryColor->y, mQuadGregoryColor->z);
 	glPatchParameteri(GL_PATCH_VERTICES, SubdMesh::sQuadGregoryPatchSize);
 	glDrawElements(GL_PATCHES, mQuadGregoryPatchTrait.count, GL_UNSIGNED_INT, 0);
 
@@ -274,6 +282,8 @@ void OglViewer::paintGL()
 	glUniformMatrix4fv((*mTriGregoryPatchShader)["proj_matrix"], 1, GL_FALSE,
 					   mViewCamera->cam_to_screen());
 	glUniform1f((*mTriGregoryPatchShader)["segments"], mTessSeg);
+	glUniform3f((*mTriGregoryPatchShader)["Kd"],
+				mTriGregoryColor->x, mTriGregoryColor->y, mTriGregoryColor->z);
 	glPatchParameteri(GL_PATCH_VERTICES, SubdMesh::sTriGregoryPatchSize);
 	glDrawElements(GL_PATCHES, mTriGregoryPatchTrait.count, GL_UNSIGNED_INT, 0);
 
@@ -324,6 +334,21 @@ void OglViewer::keyPressEvent(QKeyEvent *e)
 	{
 		mTessSeg = std::max(mTessSeg - 1, 1.0f);
 	}
+	else if (e->key() == Qt::Key_C)
+	{
+		if (mUniformPatchColor)
+		{
+			mBezierPatchColor = &cRegularPatchColor;
+			mQuadGregoryColor = &cQuadGregoryColor;
+			mTriGregoryColor = &cTriGregoryColor;
+		}
+		else
+		{
+			mBezierPatchColor = mQuadGregoryColor = mTriGregoryColor =
+				&cRegularPatchColor;
+		}
+		mUniformPatchColor = !mUniformPatchColor;
+	}
 	// Save frame buffer
 	else if (e->key() == Qt::Key_P && e->modifiers() == Qt::ControlModifier)
 	{
@@ -360,12 +385,14 @@ void OglViewer::mouseMoveEvent(QMouseEvent *e)
 
 	//printf("dx: %d, dy: %d\n", dx, dy);
 
-	if ((e->buttons() == Qt::LeftButton) && (e->modifiers() == Qt::AltModifier))
+	if (e->buttons() == Qt::LeftButton &&
+		e->modifiers() == Qt::AltModifier)
 	{
 		mViewCamera->rotate(dy * 0.25, -dx * 0.25, 0.0);
 		update();
 	}
-	else if ((e->buttons() == Qt::RightButton) && (e->modifiers() == Qt::AltModifier))
+	else if (e->buttons() == Qt::RightButton &&
+			 e->modifiers() == Qt::AltModifier)
 	{
 		if (dx != e->x() && dy != e->y())
 		{
@@ -373,11 +400,12 @@ void OglViewer::mouseMoveEvent(QMouseEvent *e)
 			update();
 		}
 	}
-	else if ((e->buttons() == Qt::MidButton) && (e->modifiers() == Qt::AltModifier))
+	else if (e->buttons() == Qt::MidButton &&
+			 e->modifiers() == Qt::AltModifier)
 	{
 		if (dx != e->x() && dy != e->y())
 		{
-			mViewCamera->zoom(-dx * 0.05, dy * 0.05, 0.0);
+			mViewCamera->zoom(-dx * 0.01, dy * 0.01, 0.0);
 			update();
 		}
 	}

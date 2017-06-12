@@ -6,7 +6,8 @@ uniform mat4 proj_matrix;
 patch in vec3 patchPts[15];
 patch in vec3 edge[12];
 
-out vec3 pos_eye, norm_eye;
+out vec3 pos_eye;
+out vec3 norm_eye;
 
 // Triangular Gregory Patch Layout
 //               10                                    08
@@ -19,6 +20,17 @@ out vec3 pos_eye, norm_eye;
 //   /         |    |         \             /                      \
 //  00--------01----07--------05          00----01-----02-----03----04
 
+vec3 eval(float u, float v, float w)
+{
+	vec3 f0 = (v * patchPts[ 3] + w * patchPts[ 4]) / (v + w);
+		vec3 f1 = (w * patchPts[ 9] + u * patchPts[ 8]) / (w + u);
+		vec3 f2 = (u * patchPts[13] + v * patchPts[14])	/ (u + v);
+	return u*u*u*patchPts[0] + v*v*v*patchPts[5] + w*w*w*patchPts[10]
+		+ 3*u*v*(u+v)*(u*patchPts[1 ] + v*patchPts[7 ])
+		+ 3*v*w*(v+w)*(v*patchPts[6 ] + w*patchPts[12])
+		+ 3*w*u*(w+u)*(w*patchPts[11] + u*patchPts[2 ])
+		+ 12*u*v*w*(u*f0 + v*f1 + w*f2);
+}
 
 void main()
 {
@@ -83,8 +95,24 @@ void main()
 		}
 		
 		pos_eye = u * p[0] + v * p[1] + w * p[2];
+		//pos_eye = eval(u,v,w);
 		vec3 dpdu = p[1] - p[0];
 		vec3 dpdv = p[2] - p[0];
+
+		/*if (w==0)
+		{
+			vec3 t1 = 3*(patchPts[2] - patchPts[0]);
+			vec3 t2 = 4*(patchPts[3] - patchPts[1]);
+			vec3 t3 = 4*(patchPts[9] - patchPts[7]);
+			vec3 t4 = 3*(patchPts[6] - patchPts[5]);
+			t1 = mix(t1, t2, v);
+			t2 = mix(t2, t3, v);
+			t3 = mix(t3, t4, v);
+			t1 = mix(t1, t2, v);
+			t2 = mix(t2, t3, v);
+			
+			dpdv = mix(t1, t2, v);
+		}*/
 
 		norm_eye = normalize(cross(dpdu, dpdv));
 

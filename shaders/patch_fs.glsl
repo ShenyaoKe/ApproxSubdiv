@@ -4,7 +4,7 @@
 //in vec3 norm;
 in vec3 pos_eye, norm_eye;
 
-uniform vec3 Kd = vec3(0.6, 0.8, 1);
+uniform vec3 Kd;// = vec3(0.6, 0.8, 1);
 uniform vec3 La = vec3(0.1f, 0.1f, 0.1f); // grey ambient colour
 uniform vec3 white = vec3(1, 1, 1);
 // fixed point light properties

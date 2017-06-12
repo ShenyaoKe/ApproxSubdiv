@@ -81,6 +81,15 @@ private:
 	BufferTrait mTriGregoryPatchTrait;
 	std::unique_ptr<GLSLProgram> mTriGregoryPatchShader;
 
+	static const Point3f cRegularPatchColor;
+	static const Point3f cQuadGregoryColor;
+	static const Point3f cTriGregoryColor;
+
+	bool mUniformPatchColor = true;
+	const Point3f* mBezierPatchColor = &cRegularPatchColor;
+	const Point3f* mQuadGregoryColor = &cRegularPatchColor;
+	const Point3f* mTriGregoryColor = &cRegularPatchColor;
+
 	vector<GLfloat> filmgate, resgate;
 
 	unique_ptr<Kaguya::PerspectiveCamera> mViewCamera;
