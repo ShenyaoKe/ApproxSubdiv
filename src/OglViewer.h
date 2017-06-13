@@ -16,6 +16,8 @@
 
 using namespace Kaguya;
 
+const std::string cObjFileDir = "scene/obj/";
+
 class OglViewer : QOpenGLWidget
 {
 	Q_OBJECT
@@ -24,6 +26,7 @@ public:
 	~OglViewer();
 
 	void resetCamera();
+
 protected:
 	void initializeGL() override;
 	void paintGL() override;
@@ -34,16 +37,18 @@ protected:
 	void mouseReleaseEvent(QMouseEvent *e) override;
 	void mouseMoveEvent(QMouseEvent *e) override;
 private:
+	void createShaders();
 	void bindMesh();
 	void bindPatchVertex();
 	void bindBezierPatch();
 	void bindQuadGregoryPatch();
 	void bindTriGregoryPatch();
+	void updateBufferData();
 
 	GLuint createRenderObject(const RenderBufferTrait &trait);
+	void reloadMesh();
 	void saveFrameBuffer();
-public:
-protected:
+
 private:
 	float mProcessFps;
 	int mFps;

@@ -9,7 +9,9 @@ namespace Gregory
 
 using GFloat = double;
 
-constexpr GFloat cTriFaceD = 4.0;
+// TODO: Questionable change of d value for triangle gregory patch
+//       d = 4 in paper.
+constexpr GFloat cTriFaceD = 3.0;
 constexpr GFloat cTriFaceInvD = 1.0 / cTriFaceD;
 constexpr GFloat cQuadFaceD = 3.0;
 constexpr GFloat cQuadFaceInvD = 1.0 / cQuadFaceD;

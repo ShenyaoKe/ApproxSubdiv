@@ -11,7 +11,7 @@ OglViewer::OglViewer(QWidget* parent)
 		Kaguya::Point3f(0, 1, 0),
 		Kaguya::Vector3f(0, 1, 0),
 		width() / float(height())))
-	, model_mesh(new SubdMesh("scene/obj/dragon.obj"))
+	, model_mesh(new SubdMesh(cObjFileDir + "cube.obj"))
 {
 }
 
@@ -41,28 +41,8 @@ void OglViewer::initializeGL()
 	glClearColor(0.6, 0.6, 0.6, 0.0);
 
 	// Create shader files
-	model_shader = make_unique<GLSLProgram>("shaders/quad_vs.glsl",
-											"shaders/quad_fs.glsl",
-											"shaders/quad_gs.glsl");
-	mBezierPatchShader = make_unique<GLSLProgram>("shaders/patch_vs.glsl",
-												  "shaders/patch_fs.glsl",
-												  nullptr,
-												  "shaders/bezier_patch_tc.glsl",
-												  "shaders/bezier_patch_te.glsl");
-	mQuadGregoryPatchShader = make_unique<GLSLProgram>("shaders/patch_vs.glsl",
-													   "shaders/patch_fs.glsl",
-													   nullptr,
-													   "shaders/gregory_patch_tc.glsl",
-													   "shaders/gregory_patch_te.glsl");
-	mTriGregoryPatchShader = make_unique<GLSLProgram>("shaders/patch_vs.glsl",
-													  "shaders/patch_fs.glsl",
-													  nullptr,
-													  "shaders/tri_gregory_patch_tc.glsl",
-													  "shaders/tri_gregory_patch_te.glsl");
-	// Export vbo for shaders
+	createShaders();
 
-	//model_mesh->exportIndexedVBO(&model_verts, nullptr, nullptr, &model_idx);
-	//bindMesh();
 	model_mesh->getPatch(mPatchVertexTrait,
 						 mBezierPatchTrait,
 						 mQuadGregoryPatchTrait,
@@ -71,8 +51,35 @@ void OglViewer::initializeGL()
 	bindBezierPatch();
 	bindQuadGregoryPatch();
 	bindTriGregoryPatch();
+	updateBufferData();
 }
 
+void OglViewer::createShaders()
+{
+	// Create shader files
+	model_shader =
+		make_unique<GLSLProgram>("shaders/quad_vs.glsl",
+								 "shaders/quad_fs.glsl",
+								 "shaders/quad_gs.glsl");
+	mBezierPatchShader =
+		make_unique<GLSLProgram>("shaders/patch_vs.glsl",
+								 "shaders/patch_fs.glsl",
+								 nullptr,
+								 "shaders/bezier_patch_tc.glsl",
+								 "shaders/bezier_patch_te.glsl");
+	mQuadGregoryPatchShader =
+		make_unique<GLSLProgram>("shaders/patch_vs.glsl",
+								 "shaders/patch_fs.glsl",
+								 nullptr,
+								 "shaders/gregory_patch_tc.glsl",
+								 "shaders/gregory_patch_te.glsl");
+	mTriGregoryPatchShader =
+		make_unique<GLSLProgram>("shaders/patch_vs.glsl",
+								 "shaders/patch_fs.glsl",
+								 nullptr,
+								 "shaders/tri_gregory_patch_tc.glsl",
+								 "shaders/tri_gregory_patch_te.glsl");
+}
 void OglViewer::bindMesh()
 {
 	glDeleteBuffers(1, &model_vert_vbo);
@@ -109,10 +116,6 @@ void OglViewer::bindMesh()
 void OglViewer::bindPatchVertex()
 {
 	glCreateBuffers(1, &mPatchVBO);
-	glNamedBufferData(mPatchVBO,
-					  mPatchVertexTrait.size,
-					  mPatchVertexTrait.data,
-					  GL_STATIC_DRAW);
 }
 
 void OglViewer::bindBezierPatch()
@@ -120,10 +123,6 @@ void OglViewer::bindBezierPatch()
 	glDeleteVertexArrays(1, &mBezierPatchVAO);
 
 	glCreateBuffers(1, &mBezierPatchIBO);
-	glNamedBufferData(mBezierPatchIBO,
-					  mBezierPatchTrait.size,
-					  mBezierPatchTrait.data,
-					  GL_STATIC_DRAW);
 
 	// VAO
 	glCreateVertexArrays(1, &mBezierPatchVAO);
@@ -145,10 +144,6 @@ void OglViewer::bindQuadGregoryPatch()
 	glDeleteVertexArrays(1, &mQuadGregoryPatchVAO);
 
 	glCreateBuffers(1, &mQuadGregoryPatchIBO);
-	glNamedBufferData(mQuadGregoryPatchIBO,
-					  mQuadGregoryPatchTrait.size,
-					  mQuadGregoryPatchTrait.data,
-					  GL_STATIC_DRAW);
 
 	// VAO
 	glCreateVertexArrays(1, &mQuadGregoryPatchVAO);
@@ -170,10 +165,6 @@ void OglViewer::bindTriGregoryPatch()
 	glDeleteVertexArrays(1, &mTriGregoryPatchVAO);
 
 	glCreateBuffers(1, &mTriGregoryPatchIBO);
-	glNamedBufferData(mTriGregoryPatchIBO,
-					  mTriGregoryPatchTrait.size,
-					  mTriGregoryPatchTrait.data,
-					  GL_STATIC_DRAW);
 
 	// VAO
 	glCreateVertexArrays(1, &mTriGregoryPatchVAO);
@@ -187,6 +178,46 @@ void OglViewer::bindTriGregoryPatch()
 							  mPatchVertexTrait.stride);
 	glVertexArrayAttribBinding(mTriGregoryPatchVAO, 0, 0);
 	glVertexArrayElementBuffer(mTriGregoryPatchVAO, mTriGregoryPatchIBO);
+}
+
+void OglViewer::updateBufferData()
+{
+	// Patch
+	if (mPatchVertexTrait.size == 0)
+	{
+		return;
+	}
+	glNamedBufferData(mPatchVBO,
+					  mPatchVertexTrait.size,
+					  mPatchVertexTrait.data,
+					  GL_STATIC_DRAW);
+
+	// Bezier Patch
+	if (mBezierPatchTrait.size > 0)
+	{
+		glNamedBufferData(mBezierPatchIBO,
+						  mBezierPatchTrait.size,
+						  mBezierPatchTrait.data,
+						  GL_STATIC_DRAW);
+	}
+
+	// Quad Gregory
+	if (mQuadGregoryPatchTrait.size > 0)
+	{
+		glNamedBufferData(mQuadGregoryPatchIBO,
+						  mQuadGregoryPatchTrait.size,
+						  mQuadGregoryPatchTrait.data,
+						  GL_STATIC_DRAW);
+	}
+
+	// Triangular Gregory
+	if (mTriGregoryPatchTrait.size > 0)
+	{
+		glNamedBufferData(mTriGregoryPatchIBO,
+						  mTriGregoryPatchTrait.size,
+						  mTriGregoryPatchTrait.data,
+						  GL_STATIC_DRAW);
+	}
 }
 
 GLuint OglViewer::createRenderObject(const RenderBufferTrait &trait)
@@ -349,6 +380,10 @@ void OglViewer::keyPressEvent(QKeyEvent *e)
 		}
 		mUniformPatchColor = !mUniformPatchColor;
 	}
+	/*else if (e->key() == Qt::Key_R && e->modifiers() == Qt::ControlModifier)
+	{
+		reloadMesh();
+	}*/
 	// Save frame buffer
 	else if (e->key() == Qt::Key_P && e->modifiers() == Qt::ControlModifier)
 	{
@@ -428,9 +463,27 @@ void OglViewer::resetCamera()
 											width() / Float(height())));
 }
 
+void OglViewer::reloadMesh()
+{
+	QString filename = QFileDialog::getOpenFileName(
+		this, "Load Obj File...", cObjFileDir.c_str(), tr("OBJ(*.obj)"));
+	if (filename.isNull())
+	{
+		return;
+	}
+	model_mesh.reset(new SubdMesh(filename.toStdString()));
+	
+	model_mesh->getPatch(mPatchVertexTrait,
+						 mBezierPatchTrait,
+						 mQuadGregoryPatchTrait,
+						 mTriGregoryPatchTrait);
+
+	updateBufferData();
+}
+
 void OglViewer::saveFrameBuffer()
 {
 	QString filename = QFileDialog::getSaveFileName(
-		this, "Save Screenshot file...", "default", tr("PNG(*.png)"));
+		this, "Save Screen shot to...", "default", tr("PNG(*.png)"));
 	grab().save(filename);
 }
